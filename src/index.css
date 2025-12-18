@@ -2,95 +2,121 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* MyBarrister Design System - Court-Grade Legal App
+   Aesthetic: Professional, minimal, reliable, trustworthy
+   Colors: Deep slate blues, warm neutrals, cautionary amber
 */
+
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Core palette - Deep professional blues */
+    --background: 220 20% 97%;
+    --foreground: 220 30% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 220 30% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 220 30% 12%;
 
-    --primary: 222.2 47.4% 11.2%;
+    /* Primary - Deep slate blue (trust, reliability) */
+    --primary: 220 45% 20%;
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Secondary - Warm stone */
+    --secondary: 30 15% 92%;
+    --secondary-foreground: 220 30% 20%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 15% 94%;
+    --muted-foreground: 220 15% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Accent - Subtle warm */
+    --accent: 35 30% 90%;
+    --accent-foreground: 220 30% 15%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Destructive - Muted red */
+    --destructive: 0 65% 50%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 220 15% 88%;
+    --input: 220 15% 88%;
+    --ring: 220 45% 30%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Custom tokens */
+    --recording: 0 75% 55%;
+    --recording-glow: 0 75% 60%;
+    --success: 145 60% 40%;
+    --warning: 38 92% 50%;
+    --warning-muted: 38 50% 94%;
+    --confidence-high: 145 60% 40%;
+    --confidence-medium: 38 92% 50%;
+    --confidence-low: 0 65% 50%;
+    
+    /* Typography */
+    --font-serif: 'Source Serif 4', Georgia, serif;
+    --font-sans: 'Inter', system-ui, sans-serif;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(220 30% 12% / 0.04);
+    --shadow-md: 0 4px 6px -1px hsl(220 30% 12% / 0.06), 0 2px 4px -2px hsl(220 30% 12% / 0.06);
+    --shadow-lg: 0 10px 15px -3px hsl(220 30% 12% / 0.08), 0 4px 6px -4px hsl(220 30% 12% / 0.08);
 
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Sidebar */
+    --sidebar-background: 220 20% 97%;
+    --sidebar-foreground: 220 30% 12%;
+    --sidebar-primary: 220 45% 20%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 35 30% 90%;
+    --sidebar-accent-foreground: 220 30% 15%;
+    --sidebar-border: 220 15% 88%;
+    --sidebar-ring: 220 45% 30%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 220 25% 8%;
+    --foreground: 210 30% 94%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 220 25% 11%;
+    --card-foreground: 210 30% 94%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 220 25% 11%;
+    --popover-foreground: 210 30% 94%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 210 40% 85%;
+    --primary-foreground: 220 25% 10%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 220 20% 18%;
+    --secondary-foreground: 210 30% 90%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 220 20% 16%;
+    --muted-foreground: 220 15% 55%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 220 20% 20%;
+    --accent-foreground: 210 30% 90%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 220 20% 18%;
+    --input: 220 20% 18%;
+    --ring: 210 40% 70%;
+
+    --recording: 0 75% 55%;
+    --recording-glow: 0 75% 45%;
+    --warning-muted: 38 30% 15%;
+
+    --sidebar-background: 220 25% 8%;
+    --sidebar-foreground: 210 30% 94%;
+    --sidebar-primary: 210 40% 85%;
+    --sidebar-primary-foreground: 220 25% 10%;
+    --sidebar-accent: 220 20% 20%;
+    --sidebar-accent-foreground: 210 30% 90%;
+    --sidebar-border: 220 20% 18%;
+    --sidebar-ring: 210 40% 70%;
   }
 }
 
@@ -100,6 +126,63 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: var(--font-sans);
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-serif);
+  }
+}
+
+@layer components {
+  .recording-pulse {
+    animation: recording-pulse 2s ease-in-out infinite;
+  }
+
+  .recording-indicator {
+    @apply w-3 h-3 rounded-full;
+    background-color: hsl(var(--recording));
+    box-shadow: 0 0 0 0 hsl(var(--recording-glow) / 0.7);
+    animation: recording-pulse 1.5s ease-in-out infinite;
+  }
+
+  .timeline-marker {
+    @apply cursor-pointer transition-transform hover:scale-110;
+  }
+
+  .confidence-high {
+    color: hsl(var(--confidence-high));
+  }
+
+  .confidence-medium {
+    color: hsl(var(--confidence-medium));
+  }
+
+  .confidence-low {
+    color: hsl(var(--confidence-low));
+  }
+}
+
+@layer utilities {
+  .font-serif {
+    font-family: var(--font-serif);
+  }
+  
+  .font-sans {
+    font-family: var(--font-sans);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@keyframes recording-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 hsl(var(--recording-glow) / 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 8px hsl(var(--recording-glow) / 0);
   }
 }
