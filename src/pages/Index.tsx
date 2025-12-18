@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Scale, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SessionCard } from '@/components/SessionCard';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { getAllSessions, initDB } from '@/lib/storage';
 import type { Session } from '@/types/session';
 
@@ -40,9 +41,12 @@ export default function Index() {
             <Scale className="w-6 h-6 text-primary" />
             <h1 className="font-serif text-xl font-semibold">MyBarrister</h1>
           </div>
-          <Button variant="ghost" size="icon">
-            <Settings className="w-5 h-5" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <Button variant="ghost" size="icon">
+              <Settings className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
       </header>
 
