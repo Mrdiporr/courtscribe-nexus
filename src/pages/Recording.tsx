@@ -3,13 +3,14 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Pause, Play, Square, Flag, StickyNote, Gavel } from 'lucide-react';
+import { Pause, Play, Square, Flag, StickyNote, Gavel, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { RecordingIndicator } from '@/components/RecordingIndicator';
 import { TimeDisplay } from '@/components/TimeDisplay';
 import { useRecorder } from '@/hooks/useRecorder';
 import { getSession, saveMarker, saveNote, saveAdjournment } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import type { Session, Marker, Note, Adjournment } from '@/types/session';
 import {
   Dialog,
@@ -141,11 +142,14 @@ export default function Recording() {
       {/* Top bar with recording indicator */}
       <header className="p-4 flex items-center justify-between">
         <RecordingIndicator isRecording={isRecording} isPaused={isPaused} />
-        {session.caseTitle && (
-          <p className="text-sm text-muted-foreground truncate max-w-[50%]">
-            {session.caseTitle}
-          </p>
-        )}
+        <div className="flex items-center gap-2">
+          {session.caseTitle && (
+            <p className="text-sm text-muted-foreground truncate max-w-[40%]">
+              {session.caseTitle}
+            </p>
+          )}
+          <ThemeToggle />
+        </div>
       </header>
 
       {/* Main content */}
