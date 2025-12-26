@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import NewSession from "./pages/NewSession";
 import Recording from "./pages/Recording";
 import Review from "./pages/Review";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
             <Route path="/new-session" element={<NewSession />} />
             <Route path="/record/:sessionId" element={<Recording />} />
             <Route path="/review/:sessionId" element={<Review />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

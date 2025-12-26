@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, Pause, CheckCircle, Flag, StickyNote, Gavel, Trash2 } from 'lucide-react';
+import { ArrowLeft, Play, Pause, CheckCircle, Flag, StickyNote, Gavel, Trash2, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TimeDisplay } from '@/components/TimeDisplay';
 import { 
@@ -17,6 +17,7 @@ import {
   deleteSession
 } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import type { Session, AudioChunk, Marker, Note, Adjournment, ConfidenceLevel } from '@/types/session';
 import {
   AlertDialog,
@@ -177,9 +178,12 @@ export default function Review() {
               <p className="text-xs text-muted-foreground truncate">{session.courtName}</p>
             )}
           </div>
-          {session.reviewComplete && (
-            <CheckCircle className="w-5 h-5 text-success shrink-0" />
-          )}
+          <div className="flex items-center gap-1">
+            {session.reviewComplete && (
+              <CheckCircle className="w-5 h-5 text-success shrink-0" />
+            )}
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
