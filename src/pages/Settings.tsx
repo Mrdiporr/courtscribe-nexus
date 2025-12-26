@@ -1,13 +1,14 @@
 // Settings Page
-// Theme, data management, and recording preferences
+// Theme, data management, AI controls, and recording preferences
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Moon, Sun, Monitor, Trash2, HardDrive, Mic } from 'lucide-react';
+import { ArrowLeft, Moon, Sun, Monitor, Trash2, HardDrive, Mic, Sparkles, AlertTriangle } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -27,6 +28,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { getAllSessions, deleteSession } from '@/lib/storage';
+import { useAISettings } from '@/hooks/useAISettings';
 
 type RecordingQuality = 'low' | 'medium' | 'high';
 
@@ -34,6 +36,7 @@ export default function Settings() {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
+  const { aiEnabled, setAIEnabled } = useAISettings();
   
   const [sessionCount, setSessionCount] = useState(0);
   const [showClearDialog, setShowClearDialog] = useState(false);
@@ -158,6 +161,46 @@ export default function Settings() {
             <p className="text-xs text-muted-foreground">
               Changes apply to new recordings only
             </p>
+          </div>
+        </section>
+
+        {/* AI Features Section */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-muted-foreground" />
+            <h2 className="font-serif text-lg font-medium">AI Features</h2>
+          </div>
+          
+          <div className="bg-card border border-border rounded-lg p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 mr-4">
+                <p className="text-sm font-medium">Enable AI Assistance</p>
+                <p className="text-xs text-muted-foreground">
+                  AI-powered session summaries, highlight suggestions, and follow-up detection
+                </p>
+              </div>
+              <Switch
+                checked={aiEnabled}
+                onCheckedChange={(checked) => {
+                  setAIEnabled(checked);
+                  toast({ 
+                    description: checked ? "AI features enabled" : "AI features paused"
+                  });
+                }}
+              />
+            </div>
+            
+            {!aiEnabled && (
+              <div className="flex items-start gap-2 p-3 bg-warning-muted rounded-lg border border-warning/20">
+                <AlertTriangle className="w-4 h-4 text-warning mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium">AI features paused</p>
+                  <p className="text-xs text-muted-foreground">
+                    Session summaries, highlights, and follow-up suggestions will not appear in review mode.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </section>
 

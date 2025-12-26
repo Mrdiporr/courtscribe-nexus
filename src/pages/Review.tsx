@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, Pause, CheckCircle, Flag, StickyNote, Gavel, Trash2, Settings } from 'lucide-react';
+import { ArrowLeft, Play, Pause, CheckCircle, Flag, StickyNote, Gavel, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TimeDisplay } from '@/components/TimeDisplay';
 import { 
@@ -18,6 +18,8 @@ import {
 } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { ExportMenu } from '@/components/ExportMenu';
+import { AIReviewPanel } from '@/components/AIReviewPanel';
 import type { Session, AudioChunk, Marker, Note, Adjournment, ConfidenceLevel } from '@/types/session';
 import {
   AlertDialog,
@@ -45,6 +47,7 @@ export default function Review() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   useEffect(() => {
@@ -72,6 +75,7 @@ export default function Review() {
           sortedChunks.map(c => c.blob),
           { type: 'audio/webm' }
         );
+        setAudioBlob(combinedBlob);
         const url = URL.createObjectURL(combinedBlob);
         setAudioUrl(url);
       }
@@ -179,6 +183,13 @@ export default function Review() {
             )}
           </div>
           <div className="flex items-center gap-1">
+            <ExportMenu 
+              session={session} 
+              markers={markers} 
+              notes={notes} 
+              adjournments={adjournments}
+              audioBlob={audioBlob}
+            />
             {session.reviewComplete && (
               <CheckCircle className="w-5 h-5 text-success shrink-0" />
             )}
@@ -222,6 +233,14 @@ export default function Review() {
             </div>
           </section>
         )}
+
+        {/* AI Review Panel */}
+        <AIReviewPanel 
+          session={session} 
+          markers={markers} 
+          notes={notes} 
+          adjournments={adjournments} 
+        />
 
         {/* Timeline */}
         <section className="space-y-4">
