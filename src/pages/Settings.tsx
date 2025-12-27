@@ -1,14 +1,15 @@
 // Settings Page
-// Theme, data management, AI controls, and recording preferences
+// Theme, data management, AI controls, cloud sync, and recording preferences
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Moon, Sun, Monitor, Trash2, HardDrive, Mic, Sparkles, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Moon, Sun, Monitor, Trash2, HardDrive, Mic, Sparkles, AlertTriangle, Cloud, CloudOff, Upload, RefreshCw } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
+import { Progress } from '@/components/ui/progress';
 import {
   Select,
   SelectContent,
@@ -29,6 +30,9 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { getAllSessions, deleteSession } from '@/lib/storage';
 import { useAISettings } from '@/hooks/useAISettings';
+import { useCloudSyncSettings, type SyncMode } from '@/hooks/useCloudSyncSettings';
+import { useManualSync } from '@/hooks/useManualSync';
+import { getTranscriptsNeedingSync } from '@/lib/offlineStorage';
 
 type RecordingQuality = 'low' | 'medium' | 'high';
 
@@ -37,15 +41,23 @@ export default function Settings() {
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const { aiEnabled, setAIEnabled } = useAISettings();
+  const { syncMode, setSyncMode } = useCloudSyncSettings();
+  const { isSyncing, progress, startSync } = useManualSync();
   
   const [sessionCount, setSessionCount] = useState(0);
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [recordingQuality, setRecordingQuality] = useState<RecordingQuality>('medium');
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   useEffect(() => {
     async function loadStats() {
       const sessions = await getAllSessions();
       setSessionCount(sessions.length);
+      
+      // Get pending sync count
+      const pendingTranscripts = await getTranscriptsNeedingSync();
+      setPendingSyncCount(pendingTranscripts.length);
     }
     loadStats();
 
@@ -54,12 +66,33 @@ export default function Settings() {
     if (savedQuality) {
       setRecordingQuality(savedQuality);
     }
+
+    // Monitor online status
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, []);
 
   const handleQualityChange = (value: RecordingQuality) => {
     setRecordingQuality(value);
     localStorage.setItem('recordingQuality', value);
     toast({ description: "Recording quality updated" });
+  };
+
+  const handleSyncModeChange = (mode: SyncMode) => {
+    setSyncMode(mode);
+    toast({ 
+      description: mode === 'online' 
+        ? "Cloud sync enabled" 
+        : mode === 'offline' 
+        ? "Offline mode enabled" 
+        : "Will ask before syncing"
+    });
   };
 
   const handleClearAllData = async () => {
@@ -201,6 +234,117 @@ export default function Settings() {
                 </div>
               </div>
             )}
+          </div>
+        </section>
+
+        {/* Cloud Sync Section */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            {isOnline ? (
+              <Cloud className="w-5 h-5 text-muted-foreground" />
+            ) : (
+              <CloudOff className="w-5 h-5 text-muted-foreground" />
+            )}
+            <h2 className="font-serif text-lg font-medium">Cloud Sync</h2>
+            {!isOnline && (
+              <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded">Offline</span>
+            )}
+          </div>
+          
+          <div className="bg-card border border-border rounded-lg p-4 space-y-4">
+            <div>
+              <Label className="text-sm font-medium mb-3 block">Sync Mode</Label>
+              <RadioGroup
+                value={syncMode}
+                onValueChange={(v) => handleSyncModeChange(v as SyncMode)}
+                className="space-y-3"
+              >
+                <div className="flex items-center space-x-3">
+                  <RadioGroupItem value="online" id="sync-online" />
+                  <Label htmlFor="sync-online" className="flex items-center gap-2 cursor-pointer">
+                    <Cloud className="w-4 h-4" />
+                    <div>
+                      <span>Online Mode</span>
+                      <p className="text-xs text-muted-foreground">Automatically sync when connected</p>
+                    </div>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <RadioGroupItem value="offline" id="sync-offline" />
+                  <Label htmlFor="sync-offline" className="flex items-center gap-2 cursor-pointer">
+                    <CloudOff className="w-4 h-4" />
+                    <div>
+                      <span>Offline Mode</span>
+                      <p className="text-xs text-muted-foreground">Keep data local only</p>
+                    </div>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <RadioGroupItem value="ask" id="sync-ask" />
+                  <Label htmlFor="sync-ask" className="flex items-center gap-2 cursor-pointer">
+                    <RefreshCw className="w-4 h-4" />
+                    <div>
+                      <span>Ask Each Time</span>
+                      <p className="text-xs text-muted-foreground">Prompt before syncing data</p>
+                    </div>
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {/* Manual Sync Controls */}
+            <div className="border-t border-border pt-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Pending Sync Items</p>
+                  <p className="text-xs text-muted-foreground">Transcripts waiting to be synced</p>
+                </div>
+                <span className="text-2xl font-mono font-semibold">{pendingSyncCount}</span>
+              </div>
+
+              {isSyncing && (
+                <div className="space-y-2">
+                  <Progress value={(progress.current / Math.max(progress.total, 1)) * 100} />
+                  <p className="text-xs text-muted-foreground text-center">{progress.message}</p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => startSync('transcripts')}
+                  disabled={!isOnline || isSyncing || pendingSyncCount === 0}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Sync Transcripts
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => startSync('recordings')}
+                  disabled={!isOnline || isSyncing}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Sync Recordings
+                </Button>
+              </div>
+              <Button 
+                variant="default" 
+                className="w-full"
+                onClick={() => startSync('both')}
+                disabled={!isOnline || isSyncing}
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+                Sync All to Cloud
+              </Button>
+              
+              {!isOnline && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Connect to the internet to sync data
+                </p>
+              )}
+            </div>
           </div>
         </section>
 
