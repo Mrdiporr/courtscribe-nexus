@@ -1,5 +1,5 @@
 // MyBarrister Home - Session List
-// Entry point for the lawyer
+// Entry point with cloud sync banner
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -7,13 +7,23 @@ import { Plus, Scale, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SessionCard } from '@/components/SessionCard';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { CloudSyncBanner } from '@/components/CloudSyncBanner';
 import { getAllSessions, initDB } from '@/lib/storage';
+import { useCloudSync } from '@/hooks/useCloudSync';
 import type { Session } from '@/types/session';
 
 export default function Index() {
   const navigate = useNavigate();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  const {
+    isOnline,
+    hasConsent,
+    showConsentPrompt,
+    grantConsent,
+    denyConsent,
+  } = useCloudSync();
 
   useEffect(() => {
     async function loadSessions() {
@@ -115,15 +125,27 @@ export default function Index() {
           )}
         </section>
 
-        {/* Offline indicator */}
-        <div className="fixed bottom-4 left-4 right-4">
+        {/* Offline/Online indicator */}
+        <div className="fixed bottom-4 left-4 right-4 z-40">
           <div className="bg-muted/80 backdrop-blur rounded-full px-4 py-2 text-center">
             <p className="text-xs text-muted-foreground">
-              All data stored locally on this device
+              {isOnline ? (
+                hasConsent ? 'Syncing to cloud' : 'Online • Data stored locally'
+              ) : (
+                'Offline • Data stored locally'
+              )}
             </p>
           </div>
         </div>
       </main>
+
+      {/* Cloud sync consent banner */}
+      <CloudSyncBanner
+        isOnline={isOnline}
+        showPrompt={showConsentPrompt}
+        onGrant={grantConsent}
+        onDeny={denyConsent}
+      />
     </div>
   );
 }

@@ -1,46 +1,121 @@
 // New Session Setup
-// Minimal form - no required fields, capture first
+// Case number as unique ID, search existing cases
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mic } from 'lucide-react';
+import { ArrowLeft, Mic, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PostureSelector } from '@/components/PostureSelector';
+import { CaseSearchDialog } from '@/components/CaseSearchDialog';
 import { saveSession } from '@/lib/storage';
+import { useCloudSync } from '@/hooks/useCloudSync';
+import { useToast } from '@/hooks/use-toast';
 import type { Session, RecordingPosture } from '@/types/session';
+
+interface CloudCase {
+  id: string;
+  case_number: string;
+  case_title: string | null;
+  court_name: string | null;
+}
 
 export default function NewSession() {
   const navigate = useNavigate();
-  const [isCreating, setIsCreating] = useState(false);
+  const { toast } = useToast();
+  const { isOnline, getOrCreateCase } = useCloudSync();
   
-  // Form state - all optional
+  const [isCreating, setIsCreating] = useState(false);
+  const [showCaseSearch, setShowCaseSearch] = useState(false);
+  const [selectedCase, setSelectedCase] = useState<CloudCase | null>(null);
+  
+  // Form state - case number is important for uniqueness
   const [courtName, setCourtName] = useState('');
   const [caseTitle, setCaseTitle] = useState('');
   const [caseNumber, setCaseNumber] = useState('');
   const [posture, setPosture] = useState<RecordingPosture>('personal_notes');
 
+  // Handle case number blur - search for existing case
+  const handleCaseNumberBlur = useCallback(() => {
+    if (caseNumber.trim() && isOnline) {
+      setShowCaseSearch(true);
+    }
+  }, [caseNumber, isOnline]);
+
+  // Handle search button click
+  const handleSearchClick = useCallback(() => {
+    if (caseNumber.trim()) {
+      setShowCaseSearch(true);
+    } else {
+      toast({
+        description: "Enter a case number to search",
+      });
+    }
+  }, [caseNumber, toast]);
+
+  // Handle case selection from search
+  const handleSelectCase = useCallback((caseData: CloudCase) => {
+    setSelectedCase(caseData);
+    setCaseNumber(caseData.case_number);
+    if (caseData.case_title) setCaseTitle(caseData.case_title);
+    if (caseData.court_name) setCourtName(caseData.court_name);
+    toast({
+      description: "Case selected. New session will be added to this case.",
+    });
+  }, [toast]);
+
+  // Handle create new case
+  const handleCreateNewCase = useCallback(() => {
+    setSelectedCase(null);
+  }, []);
+
   const handleStartSession = async () => {
     setIsCreating(true);
     
-    const sessionId = `session_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-    
-    const session: Session = {
-      id: sessionId,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      status: 'active',
-      courtName: courtName.trim() || undefined,
-      caseTitle: caseTitle.trim() || undefined,
-      caseNumber: caseNumber.trim() || undefined,
-      recordingPosture: posture,
-      reviewComplete: false,
-      totalDurationMs: 0,
-    };
+    try {
+      const sessionId = `session_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+      
+      // If online and has case number, get or create case in cloud
+      let cloudCaseId: string | undefined;
+      if (isOnline && caseNumber.trim()) {
+        const cloudCase = selectedCase || await getOrCreateCase(
+          caseNumber.trim(),
+          caseTitle.trim() || undefined,
+          courtName.trim() || undefined
+        );
+        cloudCaseId = cloudCase?.id;
+      }
+      
+      const session: Session = {
+        id: sessionId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        status: 'active',
+        courtName: courtName.trim() || undefined,
+        caseTitle: caseTitle.trim() || undefined,
+        caseNumber: caseNumber.trim() || undefined,
+        recordingPosture: posture,
+        reviewComplete: false,
+        totalDurationMs: 0,
+      };
 
-    await saveSession(session);
-    navigate(`/record/${sessionId}`);
+      // Store cloud case ID in session for later sync
+      if (cloudCaseId) {
+        (session as any).cloudCaseId = cloudCaseId;
+      }
+
+      await saveSession(session);
+      navigate(`/record/${sessionId}`);
+    } catch (error) {
+      console.error('Error creating session:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create session",
+        variant: "destructive",
+      });
+      setIsCreating(false);
+    }
   };
 
   return (
@@ -56,13 +131,49 @@ export default function NewSession() {
       </header>
 
       <main className="container px-4 py-6 space-y-8 max-w-lg mx-auto">
-        {/* Optional context fields */}
+        {/* Case number with search */}
         <section className="space-y-4 animate-fade-in">
           <p className="text-sm text-muted-foreground">
-            All fields are optional. You can add details during review.
+            Enter a case number to search for existing cases or create a new one.
           </p>
 
           <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="number">Case/Suit Number</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="number"
+                  placeholder="e.g., FHC/L/CS/123/2024"
+                  value={caseNumber}
+                  onChange={(e) => {
+                    setCaseNumber(e.target.value);
+                    setSelectedCase(null);
+                  }}
+                  onBlur={handleCaseNumberBlur}
+                  className="flex-1"
+                />
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={handleSearchClick}
+                  disabled={!caseNumber.trim()}
+                  title="Search for existing case"
+                >
+                  <Search className="w-4 h-4" />
+                </Button>
+              </div>
+              {selectedCase && (
+                <p className="text-xs text-primary">
+                  ✓ Adding to existing case: {selectedCase.case_number}
+                </p>
+              )}
+              {!isOnline && caseNumber.trim() && (
+                <p className="text-xs text-muted-foreground">
+                  Offline - case will be synced when online
+                </p>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="court">Court</Label>
               <Input
@@ -80,16 +191,6 @@ export default function NewSession() {
                 placeholder="e.g., ABC Ltd v. XYZ Corp"
                 value={caseTitle}
                 onChange={(e) => setCaseTitle(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="number">Case/Suit Number</Label>
-              <Input
-                id="number"
-                placeholder="e.g., FHC/L/CS/123/2024"
-                value={caseNumber}
-                onChange={(e) => setCaseNumber(e.target.value)}
               />
             </div>
           </div>
@@ -123,6 +224,15 @@ export default function NewSession() {
           </p>
         </section>
       </main>
+
+      {/* Case search dialog */}
+      <CaseSearchDialog
+        open={showCaseSearch}
+        onOpenChange={setShowCaseSearch}
+        caseNumber={caseNumber}
+        onSelectCase={handleSelectCase}
+        onCreateNew={handleCreateNewCase}
+      />
     </div>
   );
 }

@@ -1,9 +1,9 @@
 // Session Review Screen
-// Post-court review workflow with timeline
+// Post-court review with transcription, timeline, and calendar
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, Pause, CheckCircle, Flag, StickyNote, Gavel, Trash2 } from 'lucide-react';
+import { ArrowLeft, Play, Pause, CheckCircle, Flag, StickyNote, Gavel, Trash2, FileText, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TimeDisplay } from '@/components/TimeDisplay';
 import { 
@@ -17,9 +17,13 @@ import {
   deleteSession
 } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
+import { useAISettings } from '@/hooks/useAISettings';
+import { useTranscription, type SpeakerSegment } from '@/hooks/useTranscription';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { ExportMenu } from '@/components/ExportMenu';
 import { AIReviewPanel } from '@/components/AIReviewPanel';
+import { TranscriptViewer } from '@/components/TranscriptViewer';
+import { CalendarButton } from '@/components/CalendarButton';
 import type { Session, AudioChunk, Marker, Note, Adjournment, ConfidenceLevel } from '@/types/session';
 import {
   AlertDialog,
@@ -31,11 +35,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
 
 export default function Review() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { aiEnabled } = useAISettings();
   const audioRef = useRef<HTMLAudioElement>(null);
   
   const [session, setSession] = useState<Session | null>(null);
@@ -49,6 +61,17 @@ export default function Review() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showTranscribeConsent, setShowTranscribeConsent] = useState(false);
+
+  // Transcription state
+  const {
+    isTranscribing,
+    progress: transcriptionProgress,
+    transcription,
+    speakerLabels,
+    transcribeAudio,
+    updateSpeakerLabel,
+  } = useTranscription();
 
   useEffect(() => {
     async function loadData() {
@@ -109,6 +132,26 @@ export default function Review() {
   const handleTimeUpdate = () => {
     if (audioRef.current) {
       setCurrentTime(audioRef.current.currentTime * 1000);
+    }
+  };
+
+  // Transcription handlers
+  const handleTranscribeClick = () => {
+    if (aiEnabled) {
+      setShowTranscribeConsent(true);
+    } else {
+      toast({
+        title: "AI Features Disabled",
+        description: "Enable AI features in Settings to use transcription.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleTranscribeConfirm = async () => {
+    setShowTranscribeConsent(false);
+    if (audioBlob) {
+      await transcribeAudio(audioBlob);
     }
   };
 
@@ -178,9 +221,15 @@ export default function Review() {
             <h1 className="font-serif text-lg font-semibold truncate">
               {session.caseTitle || 'Session Review'}
             </h1>
-            {session.courtName && (
-              <p className="text-xs text-muted-foreground truncate">{session.courtName}</p>
-            )}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              {session.caseNumber && (
+                <span className="truncate">{session.caseNumber}</span>
+              )}
+              {session.courtName && session.caseNumber && <span>•</span>}
+              {session.courtName && (
+                <span className="truncate">{session.courtName}</span>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-1">
             <ExportMenu 
@@ -231,6 +280,39 @@ export default function Review() {
                 </div>
               </div>
             </div>
+
+            {/* Transcription button */}
+            <div className="flex items-center gap-2">
+              {!transcription && !isTranscribing && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="gap-2"
+                  onClick={handleTranscribeClick}
+                  disabled={!aiEnabled}
+                >
+                  <FileText className="w-4 h-4" />
+                  Transcribe Recording
+                </Button>
+              )}
+              
+              {isTranscribing && (
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Transcribing audio...</span>
+                  </div>
+                  <Progress value={transcriptionProgress} className="h-1" />
+                </div>
+              )}
+
+              {transcription && (
+                <div className="text-sm text-success flex items-center gap-1">
+                  <CheckCircle className="w-4 h-4" />
+                  Transcript available
+                </div>
+              )}
+            </div>
           </section>
         )}
 
@@ -242,100 +324,137 @@ export default function Review() {
           adjournments={adjournments} 
         />
 
-        {/* Timeline */}
-        <section className="space-y-4">
-          <h2 className="font-serif text-lg font-medium">Timeline</h2>
-          
-          {timelineItems.length > 0 ? (
-            <div className="space-y-3">
-              {timelineItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => handleSeek(item.timestampMs)}
-                  className="w-full text-left p-3 bg-card border border-border rounded-lg hover:border-primary/30 transition-all"
-                >
-                  <div className="flex items-start gap-3">
-                    {item.type === 'marker' && <Flag className="w-4 h-4 text-warning mt-0.5 shrink-0" />}
-                    {item.type === 'note' && <StickyNote className="w-4 h-4 text-primary mt-0.5 shrink-0" />}
-                    {item.type === 'adjournment' && <Gavel className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />}
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono text-muted-foreground">
-                          {formatTimestamp(item.timestampMs)}
-                        </span>
-                        <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                          {item.type}
-                        </span>
-                      </div>
+        {/* Tabs for Timeline and Transcript */}
+        <Tabs defaultValue="timeline" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="timeline">Timeline</TabsTrigger>
+            <TabsTrigger value="transcript" disabled={!transcription}>
+              Transcript
+              {transcription && (
+                <span className="ml-1 text-xs text-muted-foreground">
+                  ({transcription.speakerSegments.length})
+                </span>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Timeline Tab */}
+          <TabsContent value="timeline" className="space-y-4 mt-4">
+            <h2 className="font-serif text-lg font-medium">Timeline</h2>
+            
+            {timelineItems.length > 0 ? (
+              <div className="space-y-3">
+                {timelineItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => handleSeek(item.timestampMs)}
+                    className="w-full text-left p-3 bg-card border border-border rounded-lg hover:border-primary/30 transition-all"
+                  >
+                    <div className="flex items-start gap-3">
+                      {item.type === 'marker' && <Flag className="w-4 h-4 text-warning mt-0.5 shrink-0" />}
+                      {item.type === 'note' && <StickyNote className="w-4 h-4 text-primary mt-0.5 shrink-0" />}
+                      {item.type === 'adjournment' && <Gavel className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />}
                       
-                      {item.type === 'marker' && (
-                        <p className="text-sm mt-1">{(item as Marker).label}</p>
-                      )}
-                      
-                      {item.type === 'note' && (
-                        <p className="text-sm mt-1">{(item as Note).content}</p>
-                      )}
-                      
-                      {item.type === 'adjournment' && (
-                        <div className="mt-1 space-y-2">
-                          {(item as Adjournment).nextDate && (
-                            <p className="text-sm">
-                              Next date: {new Date((item as Adjournment).nextDate!).toLocaleDateString('en-NG')}
-                            </p>
-                          )}
-                          {(item as Adjournment).reason && (
-                            <p className="text-sm text-muted-foreground">{(item as Adjournment).reason}</p>
-                          )}
-                          
-                          {/* Confidence buttons */}
-                          {(item as Adjournment).confidence === 'unconfirmed' && (
-                            <div className="flex gap-2 mt-2">
-                              <Button 
-                                variant="confidence-high" 
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  confirmAdjournment(item as Adjournment, 'high');
-                                }}
-                              >
-                                Confirm
-                              </Button>
-                              <Button 
-                                variant="confidence-medium" 
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  confirmAdjournment(item as Adjournment, 'medium');
-                                }}
-                              >
-                                Uncertain
-                              </Button>
-                            </div>
-                          )}
-                          
-                          {(item as Adjournment).confidence !== 'unconfirmed' && (
-                            <span className={`text-xs font-medium ${
-                              (item as Adjournment).confidence === 'high' ? 'text-confidence-high' :
-                              (item as Adjournment).confidence === 'medium' ? 'text-confidence-medium' :
-                              'text-confidence-low'
-                            }`}>
-                              {(item as Adjournment).confidence === 'high' ? '✓ Confirmed' : '? Uncertain'}
-                            </span>
-                          )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-mono text-muted-foreground">
+                            {formatTimestamp(item.timestampMs)}
+                          </span>
+                          <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                            {item.type}
+                          </span>
                         </div>
-                      )}
+                        
+                        {item.type === 'marker' && (
+                          <p className="text-sm mt-1">{(item as Marker).label}</p>
+                        )}
+                        
+                        {item.type === 'note' && (
+                          <p className="text-sm mt-1">{(item as Note).content}</p>
+                        )}
+                        
+                        {item.type === 'adjournment' && (
+                          <div className="mt-1 space-y-2">
+                            {(item as Adjournment).nextDate && (
+                              <div className="flex items-center justify-between">
+                                <p className="text-sm">
+                                  Next date: {new Date((item as Adjournment).nextDate!).toLocaleDateString('en-NG')}
+                                </p>
+                                <CalendarButton
+                                  caseTitle={session.caseTitle}
+                                  caseNumber={session.caseNumber}
+                                  nextDate={(item as Adjournment).nextDate!}
+                                  courtName={session.courtName}
+                                  reason={(item as Adjournment).reason}
+                                />
+                              </div>
+                            )}
+                            {(item as Adjournment).reason && (
+                              <p className="text-sm text-muted-foreground">{(item as Adjournment).reason}</p>
+                            )}
+                            
+                            {/* Confidence buttons */}
+                            {(item as Adjournment).confidence === 'unconfirmed' && (
+                              <div className="flex gap-2 mt-2">
+                                <Button 
+                                  variant="confidence-high" 
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    confirmAdjournment(item as Adjournment, 'high');
+                                  }}
+                                >
+                                  Confirm
+                                </Button>
+                                <Button 
+                                  variant="confidence-medium" 
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    confirmAdjournment(item as Adjournment, 'medium');
+                                  }}
+                                >
+                                  Uncertain
+                                </Button>
+                              </div>
+                            )}
+                            
+                            {(item as Adjournment).confidence !== 'unconfirmed' && (
+                              <span className={`text-xs font-medium ${
+                                (item as Adjournment).confidence === 'high' ? 'text-confidence-high' :
+                                (item as Adjournment).confidence === 'medium' ? 'text-confidence-medium' :
+                                'text-confidence-low'
+                              }`}>
+                                {(item as Adjournment).confidence === 'high' ? '✓ Confirmed' : '? Uncertain'}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground text-center py-8">
-              No markers, notes, or adjournments recorded
-            </p>
-          )}
-        </section>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                No markers, notes, or adjournments recorded
+              </p>
+            )}
+          </TabsContent>
+
+          {/* Transcript Tab */}
+          <TabsContent value="transcript" className="mt-4">
+            {transcription && (
+              <TranscriptViewer
+                segments={transcription.speakerSegments}
+                speakerLabels={speakerLabels}
+                onUpdateSpeakerLabel={updateSpeakerLabel}
+                onSeek={handleSeek}
+                currentTimeMs={currentTime}
+              />
+            )}
+          </TabsContent>
+        </Tabs>
 
         {/* Actions */}
         <section className="space-y-3 pt-4">
@@ -360,6 +479,27 @@ export default function Review() {
           </Button>
         </section>
       </main>
+
+      {/* Transcription consent dialog */}
+      <AlertDialog open={showTranscribeConsent} onOpenChange={setShowTranscribeConsent}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Transcribe Recording?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will send the audio to an AI service for transcription. The transcript will include speaker detection to help identify different voices.
+              <br /><br />
+              <strong>Note:</strong> Speaker labels are estimates and may need manual correction.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleTranscribeConfirm}>
+              <FileText className="w-4 h-4 mr-2" />
+              Transcribe
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete confirmation */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
