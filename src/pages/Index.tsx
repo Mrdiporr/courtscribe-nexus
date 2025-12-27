@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Scale, Settings } from 'lucide-react';
+import { Plus, Scale, Settings, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SessionCard } from '@/components/SessionCard';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -52,6 +52,9 @@ export default function Index() {
             <h1 className="font-serif text-xl font-semibold">MyBarrister</h1>
           </div>
           <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={() => navigate('/cases')}>
+              <FolderOpen className="w-5 h-5" />
+            </Button>
             <ThemeToggle />
             <Button variant="ghost" size="icon" onClick={() => navigate('/settings')}>
               <Settings className="w-5 h-5" />
