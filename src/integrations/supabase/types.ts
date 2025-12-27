@@ -14,7 +14,230 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      cases: {
+        Row: {
+          case_number: string
+          case_title: string | null
+          court_name: string | null
+          created_at: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          case_number: string
+          case_title?: string | null
+          court_name?: string | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          case_number?: string
+          case_title?: string | null
+          court_name?: string | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      cloud_adjournments: {
+        Row: {
+          confidence: string
+          confirmed_at: string | null
+          confirmed_by: string
+          created_at: string
+          google_calendar_event_id: string | null
+          id: string
+          next_date: string | null
+          reason: string | null
+          session_id: string
+          timestamp_ms: number
+        }
+        Insert: {
+          confidence?: string
+          confirmed_at?: string | null
+          confirmed_by?: string
+          created_at?: string
+          google_calendar_event_id?: string | null
+          id?: string
+          next_date?: string | null
+          reason?: string | null
+          session_id: string
+          timestamp_ms: number
+        }
+        Update: {
+          confidence?: string
+          confirmed_at?: string | null
+          confirmed_by?: string
+          created_at?: string
+          google_calendar_event_id?: string | null
+          id?: string
+          next_date?: string | null
+          reason?: string | null
+          session_id?: string
+          timestamp_ms?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cloud_adjournments_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "cloud_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cloud_sessions: {
+        Row: {
+          case_id: string | null
+          created_at: string
+          id: string
+          local_id: string
+          recording_posture: string
+          review_complete: boolean
+          reviewed_at: string | null
+          status: string
+          total_duration_ms: number
+          updated_at: string
+        }
+        Insert: {
+          case_id?: string | null
+          created_at?: string
+          id?: string
+          local_id: string
+          recording_posture?: string
+          review_complete?: boolean
+          reviewed_at?: string | null
+          status?: string
+          total_duration_ms?: number
+          updated_at?: string
+        }
+        Update: {
+          case_id?: string | null
+          created_at?: string
+          id?: string
+          local_id?: string
+          recording_posture?: string
+          review_complete?: boolean
+          reviewed_at?: string | null
+          status?: string
+          total_duration_ms?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cloud_sessions_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      speaker_segments: {
+        Row: {
+          created_at: string
+          end_ms: number
+          id: string
+          segment_index: number
+          speaker_id: string
+          speaker_label: string
+          start_ms: number
+          text: string
+          transcript_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_ms: number
+          id?: string
+          segment_index: number
+          speaker_id: string
+          speaker_label?: string
+          start_ms: number
+          text: string
+          transcript_id: string
+        }
+        Update: {
+          created_at?: string
+          end_ms?: number
+          id?: string
+          segment_index?: number
+          speaker_id?: string
+          speaker_label?: string
+          start_ms?: number
+          text?: string
+          transcript_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "speaker_segments_transcript_id_fkey"
+            columns: ["transcript_id"]
+            isOneToOne: false
+            referencedRelation: "transcripts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sync_consent: {
+        Row: {
+          consented: boolean
+          consented_at: string | null
+          created_at: string
+          device_id: string
+          id: string
+        }
+        Insert: {
+          consented?: boolean
+          consented_at?: string | null
+          created_at?: string
+          device_id: string
+          id?: string
+        }
+        Update: {
+          consented?: boolean
+          consented_at?: string | null
+          created_at?: string
+          device_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      transcripts: {
+        Row: {
+          created_at: string
+          full_text: string | null
+          id: string
+          language_code: string | null
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          full_text?: string | null
+          id?: string
+          language_code?: string | null
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          full_text?: string | null
+          id?: string
+          language_code?: string | null
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transcripts_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "cloud_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
