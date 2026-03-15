@@ -172,8 +172,30 @@ export default function Review() {
 
   const handleTranscribeConfirm = async () => {
     setShowTranscribeConsent(false);
-    if (audioBlob) {
-      await transcribeAudio(audioBlob);
+    if (audioBlob && sessionId) {
+      const result = await transcribeAudio(audioBlob);
+      if (result) {
+        // Auto-save to IndexedDB
+        await saveOfflineTranscript({
+          id: `transcript_${sessionId}`,
+          sessionId,
+          caseNumber: session?.caseNumber,
+          fullText: result.text,
+          segments: result.speakerSegments.map(seg => ({
+            id: seg.id,
+            speakerId: seg.speakerId,
+            speakerLabel: seg.speakerLabel,
+            text: seg.text,
+            startMs: seg.startMs,
+            endMs: seg.endMs,
+            segmentIndex: seg.segmentIndex,
+          })),
+          languageCode: result.language || 'en',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          needsSync: true,
+        });
+      }
     }
   };
 
