@@ -78,6 +78,8 @@ export default function Review() {
     async function loadData() {
       if (!sessionId) return;
       
+      await initOfflineDB();
+      
       const [s, chunks, m, n, adj] = await Promise.all([
         getSession(sessionId),
         getAudioChunks(sessionId),
@@ -102,6 +104,24 @@ export default function Review() {
         setAudioBlob(combinedBlob);
         const url = URL.createObjectURL(combinedBlob);
         setAudioUrl(url);
+      }
+
+      // Load existing offline transcript
+      const offlineTranscript = await getOfflineTranscript(sessionId);
+      if (offlineTranscript) {
+        setTranscription({
+          text: offlineTranscript.fullText,
+          speakerSegments: offlineTranscript.segments.map(seg => ({
+            id: seg.id,
+            speakerId: seg.speakerId,
+            speakerLabel: seg.speakerLabel,
+            segmentIndex: seg.segmentIndex,
+            text: seg.text,
+            startMs: seg.startMs,
+            endMs: seg.endMs,
+          })),
+          language: offlineTranscript.languageCode,
+        });
       }
     }
     loadData();
