@@ -72,6 +72,7 @@ export default function Review() {
     speakerLabels,
     transcribeAudio,
     updateSpeakerLabel,
+    setTranscription,
   } = useTranscription();
 
   useEffect(() => {
