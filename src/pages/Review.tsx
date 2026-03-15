@@ -24,6 +24,7 @@ import { ExportMenu } from '@/components/ExportMenu';
 import { AIReviewPanel } from '@/components/AIReviewPanel';
 import { TranscriptViewer } from '@/components/TranscriptViewer';
 import { CalendarButton } from '@/components/CalendarButton';
+import { saveOfflineTranscript, getOfflineTranscript, initOfflineDB } from '@/lib/offlineStorage';
 import type { Session, AudioChunk, Marker, Note, Adjournment, ConfidenceLevel } from '@/types/session';
 import {
   AlertDialog,
