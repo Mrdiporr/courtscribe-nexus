@@ -24,6 +24,7 @@ import { ExportMenu } from '@/components/ExportMenu';
 import { AIReviewPanel } from '@/components/AIReviewPanel';
 import { TranscriptViewer } from '@/components/TranscriptViewer';
 import { CalendarButton } from '@/components/CalendarButton';
+import { saveOfflineTranscript, getOfflineTranscript, initOfflineDB } from '@/lib/offlineStorage';
 import type { Session, AudioChunk, Marker, Note, Adjournment, ConfidenceLevel } from '@/types/session';
 import {
   AlertDialog,
@@ -71,11 +72,14 @@ export default function Review() {
     speakerLabels,
     transcribeAudio,
     updateSpeakerLabel,
+    setTranscription,
   } = useTranscription();
 
   useEffect(() => {
     async function loadData() {
       if (!sessionId) return;
+      
+      await initOfflineDB();
       
       const [s, chunks, m, n, adj] = await Promise.all([
         getSession(sessionId),
@@ -101,6 +105,24 @@ export default function Review() {
         setAudioBlob(combinedBlob);
         const url = URL.createObjectURL(combinedBlob);
         setAudioUrl(url);
+      }
+
+      // Load existing offline transcript
+      const offlineTranscript = await getOfflineTranscript(sessionId);
+      if (offlineTranscript) {
+        setTranscription({
+          text: offlineTranscript.fullText,
+          speakerSegments: offlineTranscript.segments.map(seg => ({
+            id: seg.id,
+            speakerId: seg.speakerId,
+            speakerLabel: seg.speakerLabel,
+            segmentIndex: seg.segmentIndex,
+            text: seg.text,
+            startMs: seg.startMs,
+            endMs: seg.endMs,
+          })),
+          language: offlineTranscript.languageCode,
+        });
       }
     }
     loadData();
@@ -150,8 +172,30 @@ export default function Review() {
 
   const handleTranscribeConfirm = async () => {
     setShowTranscribeConsent(false);
-    if (audioBlob) {
-      await transcribeAudio(audioBlob);
+    if (audioBlob && sessionId) {
+      const result = await transcribeAudio(audioBlob);
+      if (result) {
+        // Auto-save to IndexedDB
+        await saveOfflineTranscript({
+          id: `transcript_${sessionId}`,
+          sessionId,
+          caseNumber: session?.caseNumber,
+          fullText: result.text,
+          segments: result.speakerSegments.map(seg => ({
+            id: seg.id,
+            speakerId: seg.speakerId,
+            speakerLabel: seg.speakerLabel,
+            text: seg.text,
+            startMs: seg.startMs,
+            endMs: seg.endMs,
+            segmentIndex: seg.segmentIndex,
+          })),
+          languageCode: result.language || 'en',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          needsSync: true,
+        });
+      }
     }
   };
 

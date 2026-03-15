@@ -3,8 +3,8 @@
 
 import type { Session } from '@/types/session';
 
-const DB_NAME = 'mybarrister_db';
-const DB_VERSION = 2; // Increment version to add new stores
+const DB_NAME = 'mybarrister_offline_db';
+const DB_VERSION = 1;
 
 export interface OfflineTranscript {
   id: string;
