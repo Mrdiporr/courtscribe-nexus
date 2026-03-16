@@ -121,7 +121,7 @@ export function useCloudSync() {
     } finally {
       setIsSyncing(false);
     }
-  }, [hasConsent, isOnline]);
+  }, [hasConsent, isOnline, user]);
 
   // Search for existing case by case number
   const searchCase = useCallback(async (caseNumber: string) => {
