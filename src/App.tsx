@@ -5,12 +5,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { useAutoSync } from "@/hooks/useAutoSync";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import NewSession from "./pages/NewSession";
 import Recording from "./pages/Recording";
 import Review from "./pages/Review";
 import Settings from "./pages/Settings";
 import Cases from "./pages/Cases";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,12 +31,13 @@ const App = () => (
         <BrowserRouter>
           <AutoSyncProvider>
             <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/new-session" element={<NewSession />} />
-              <Route path="/record/:sessionId" element={<Recording />} />
-              <Route path="/review/:sessionId" element={<Review />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/cases" element={<Cases />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+              <Route path="/new-session" element={<ProtectedRoute><NewSession /></ProtectedRoute>} />
+              <Route path="/record/:sessionId" element={<ProtectedRoute><Recording /></ProtectedRoute>} />
+              <Route path="/review/:sessionId" element={<ProtectedRoute><Review /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+              <Route path="/cases" element={<ProtectedRoute><Cases /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AutoSyncProvider>
