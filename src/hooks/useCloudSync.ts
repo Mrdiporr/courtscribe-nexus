@@ -11,6 +11,7 @@ const SYNC_CONSENT_KEY = 'mybarrister_sync_consent';
 
 export function useCloudSync() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [hasConsent, setHasConsent] = useState<boolean | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
