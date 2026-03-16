@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 const DEVICE_ID_KEY = 'mybarrister_device_id';
 const SYNC_CONSENT_KEY = 'mybarrister_sync_consent';
