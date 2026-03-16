@@ -15,6 +15,7 @@ import type { Session } from '@/types/session';
 
 export default function Index() {
   const navigate = useNavigate();
+  const { signOut } = useAuth();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
