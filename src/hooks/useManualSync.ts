@@ -135,16 +135,63 @@ export function useManualSync() {
     return { success, failed };
   }, [syncTranscript, getCloudSessionId]);
 
-  // Sync recordings (audio chunks) - placeholder for now
+  // Sync recordings (audio chunks) to cloud storage
   const syncRecordings = useCallback(async (): Promise<{ success: number; failed: number }> => {
-    // Recording sync would require Supabase Storage
-    // For now, just return success
-    toast({
-      description: "Recording sync requires storage configuration",
-      variant: "default",
-    });
-    return { success: 0, failed: 0 };
-  }, [toast]);
+    let success = 0;
+    let failed = 0;
+
+    try {
+      // Get all local sessions
+      const { getAllSessions, getAudioChunks } = await import('@/lib/storage');
+      const sessions = await getAllSessions();
+
+      for (let i = 0; i < sessions.length; i++) {
+        const session = sessions[i];
+        setProgress(prev => ({
+          ...prev,
+          current: i + 1,
+          total: sessions.length,
+          message: `Syncing recording ${i + 1} of ${sessions.length}...`,
+        }));
+
+        try {
+          const chunks = await getAudioChunks(session.id);
+          if (chunks.length === 0) continue;
+
+          // Combine all chunks into a single blob
+          const audioBlob = new Blob(
+            chunks.map(c => c.blob),
+            { type: 'audio/webm' }
+          );
+
+          const filePath = `sessions/${session.id}/recording.webm`;
+
+          // Upload to storage bucket
+          const { error: uploadError } = await supabase.storage
+            .from('recordings')
+            .upload(filePath, audioBlob, {
+              cacheControl: '3600',
+              upsert: true,
+              contentType: 'audio/webm',
+            });
+
+          if (uploadError) {
+            console.error('Upload error for session', session.id, uploadError);
+            failed++;
+          } else {
+            success++;
+          }
+        } catch (err) {
+          console.error('Error syncing recording for session', session.id, err);
+          failed++;
+        }
+      }
+    } catch (error) {
+      console.error('Error in syncRecordings:', error);
+    }
+
+    return { success, failed };
+  }, []);
 
   // Main sync function
   const startSync = useCallback(async (type: SyncType) => {
