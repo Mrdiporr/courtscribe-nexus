@@ -48,6 +48,7 @@ export function useManualSync() {
           session_id: cloudSessionId,
           full_text: transcript.fullText,
           language_code: transcript.languageCode,
+          user_id: user?.id,
         }, { onConflict: 'session_id' })
         .select()
         .single();
