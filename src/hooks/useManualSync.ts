@@ -29,6 +29,7 @@ interface SyncProgress {
 
 export function useManualSync() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isSyncing, setIsSyncing] = useState(false);
   const [progress, setProgress] = useState<SyncProgress>({
     current: 0,
