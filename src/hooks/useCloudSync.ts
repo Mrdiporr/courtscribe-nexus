@@ -140,7 +140,7 @@ export function useCloudSync() {
       console.error('Error searching cases:', error);
       return null;
     }
-  }, [isOnline]);
+  }, [isOnline, user]);
 
   // Get or create case
   const getOrCreateCase = useCallback(async (caseNumber: string, caseTitle?: string, courtName?: string) => {
