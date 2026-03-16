@@ -108,6 +108,7 @@ export function useCloudSync() {
           review_complete: session.reviewComplete,
           reviewed_at: session.reviewedAt || null,
           total_duration_ms: session.totalDurationMs,
+          user_id: user?.id,
         }, { onConflict: 'local_id' })
         .select()
         .single();
