@@ -163,6 +163,7 @@ export function useCloudSync() {
           case_number: caseNumber,
           case_title: caseTitle || null,
           court_name: courtName || null,
+          user_id: user?.id,
         })
         .select()
         .single();
