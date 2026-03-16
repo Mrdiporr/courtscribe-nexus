@@ -4,12 +4,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 const DEVICE_ID_KEY = 'mybarrister_device_id';
 const SYNC_CONSENT_KEY = 'mybarrister_sync_consent';
 
 export function useCloudSync() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [hasConsent, setHasConsent] = useState<boolean | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -106,6 +108,7 @@ export function useCloudSync() {
           review_complete: session.reviewComplete,
           reviewed_at: session.reviewedAt || null,
           total_duration_ms: session.totalDurationMs,
+          user_id: user?.id,
         }, { onConflict: 'local_id' })
         .select()
         .single();
@@ -118,7 +121,7 @@ export function useCloudSync() {
     } finally {
       setIsSyncing(false);
     }
-  }, [hasConsent, isOnline]);
+  }, [hasConsent, isOnline, user]);
 
   // Search for existing case by case number
   const searchCase = useCallback(async (caseNumber: string) => {
@@ -137,7 +140,7 @@ export function useCloudSync() {
       console.error('Error searching cases:', error);
       return null;
     }
-  }, [isOnline]);
+  }, [isOnline, user]);
 
   // Get or create case
   const getOrCreateCase = useCallback(async (caseNumber: string, caseTitle?: string, courtName?: string) => {
@@ -160,6 +163,7 @@ export function useCloudSync() {
           case_number: caseNumber,
           case_title: caseTitle || null,
           court_name: courtName || null,
+          user_id: user?.id,
         })
         .select()
         .single();

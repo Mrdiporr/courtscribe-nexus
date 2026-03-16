@@ -4,6 +4,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { 
   getTranscriptsNeedingSync, 
   markTranscriptSynced,
@@ -28,6 +29,7 @@ interface SyncProgress {
 
 export function useManualSync() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isSyncing, setIsSyncing] = useState(false);
   const [progress, setProgress] = useState<SyncProgress>({
     current: 0,
@@ -46,6 +48,7 @@ export function useManualSync() {
           session_id: cloudSessionId,
           full_text: transcript.fullText,
           language_code: transcript.languageCode,
+          user_id: user?.id,
         }, { onConflict: 'session_id' })
         .select()
         .single();
