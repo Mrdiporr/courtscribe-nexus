@@ -22,6 +22,7 @@ export type Database = {
           created_at: string
           id: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           case_number: string
@@ -30,6 +31,7 @@ export type Database = {
           created_at?: string
           id?: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           case_number?: string
@@ -38,6 +40,7 @@ export type Database = {
           created_at?: string
           id?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -100,6 +103,7 @@ export type Database = {
           status: string
           total_duration_ms: number
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           case_id?: string | null
@@ -112,6 +116,7 @@ export type Database = {
           status?: string
           total_duration_ms?: number
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           case_id?: string | null
@@ -124,6 +129,7 @@ export type Database = {
           status?: string
           total_duration_ms?: number
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -134,6 +140,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       speaker_segments: {
         Row: {
@@ -211,6 +241,7 @@ export type Database = {
           language_code: string | null
           session_id: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -219,6 +250,7 @@ export type Database = {
           language_code?: string | null
           session_id: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -227,6 +259,7 @@ export type Database = {
           language_code?: string | null
           session_id?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
