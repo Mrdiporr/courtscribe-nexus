@@ -3,13 +3,14 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Scale, Settings, FolderOpen } from 'lucide-react';
+import { Plus, Scale, Settings, FolderOpen, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SessionCard } from '@/components/SessionCard';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { CloudSyncBanner } from '@/components/CloudSyncBanner';
 import { getAllSessions, initDB } from '@/lib/storage';
 import { useCloudSync } from '@/hooks/useCloudSync';
+import { useAuth } from '@/hooks/useAuth';
 import type { Session } from '@/types/session';
 
 export default function Index() {
