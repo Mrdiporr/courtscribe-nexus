@@ -62,7 +62,7 @@ export default function Auth() {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
       <div className="flex items-center gap-3 mb-8">
         <Scale className="w-8 h-8 text-primary" />
-        <h1 className="font-serif text-2xl font-bold text-foreground">MyBarrister</h1>
+        <h1 className="font-serif text-2xl font-bold text-foreground">myJuris</h1>
       </div>
 
       <Card className="w-full max-w-md">

@@ -384,7 +384,7 @@ export default function Settings() {
         {/* About Section */}
         <section className="pt-4">
           <div className="text-center text-xs text-muted-foreground space-y-1">
-            <p>MyBarrister</p>
+            <p>myJuris</p>
             <p>Court recording assistant for Nigerian legal practitioners</p>
             <p className="font-mono">v0.1.0-pilot</p>
           </div>

@@ -1,4 +1,4 @@
-// MyBarrister Home - Session List
+// myJuris Home - Session List
 // Entry point with cloud sync banner
 
 import { useState, useEffect } from 'react';
@@ -51,7 +51,7 @@ export default function Index() {
         <div className="container flex items-center justify-between h-16 px-4">
           <div className="flex items-center gap-3">
             <Scale className="w-6 h-6 text-primary" />
-            <h1 className="font-serif text-xl font-semibold">MyBarrister</h1>
+            <h1 className="font-serif text-xl font-semibold">myJuris</h1>
           </div>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" onClick={() => navigate('/cases')}>

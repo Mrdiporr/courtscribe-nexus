@@ -33,7 +33,7 @@ function generateMockSuggestions(
     content: `This ${Math.round(session.totalDurationMs / 60000)} minute session${session.caseTitle ? ` for "${session.caseTitle}"` : ''} includes ${markers.length} marker(s), ${notes.length} note(s), and ${adjournments.length} adjournment record(s). ${adjournments.some(a => a.confidence === 'unconfirmed') ? 'Some adjournment dates require confirmation.' : 'All adjournment dates have been reviewed.'}`,
     createdAt: new Date(),
     dismissed: false,
-    aiModel: 'MyBarrister AI',
+    aiModel: 'myJuris AI',
   });
 
   // Highlight suggestions based on markers
@@ -53,7 +53,7 @@ function generateMockSuggestions(
         content: `${importantMarkers.length} potentially significant moment(s) were marked during this session. Consider reviewing: ${importantMarkers.map(m => m.label).join(', ')}.`,
         createdAt: new Date(),
         dismissed: false,
-        aiModel: 'MyBarrister AI',
+        aiModel: 'myJuris AI',
       });
     }
   }
@@ -75,7 +75,7 @@ function generateMockSuggestions(
       content: `${upcomingAdjournments.length} upcoming court date(s) within the next 2 weeks. Ensure all necessary preparations are in order.`,
       createdAt: new Date(),
       dismissed: false,
-      aiModel: 'MyBarrister AI',
+      aiModel: 'myJuris AI',
     });
   }
 
@@ -89,7 +89,7 @@ function generateMockSuggestions(
       content: `${unconfirmedAdj.length} adjournment date(s) remain unconfirmed. Please verify these dates before your next court appearance.`,
       createdAt: new Date(),
       dismissed: false,
-      aiModel: 'MyBarrister AI',
+      aiModel: 'myJuris AI',
     });
   }
 

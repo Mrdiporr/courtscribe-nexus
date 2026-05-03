@@ -73,7 +73,7 @@ export function createAdjournmentCalendarEvent(
   }
   
   descriptionParts.push('');
-  descriptionParts.push('Added via MyBarrister');
+  descriptionParts.push('Added via myJuris');
 
   return {
     title,
