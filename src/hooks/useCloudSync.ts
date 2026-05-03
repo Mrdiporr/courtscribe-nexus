@@ -71,18 +71,23 @@ export function useCloudSync() {
     setShowConsentPrompt(false);
 
     const deviceId = getDeviceId();
+    if (!user?.id) {
+      toast({ description: 'Please sign in to enable cloud sync.', variant: 'destructive' });
+      return;
+    }
     try {
       await supabase.from('sync_consent').upsert({
         device_id: deviceId,
         consented: true,
         consented_at: new Date().toISOString(),
-      }, { onConflict: 'device_id' });
+        user_id: user.id,
+      }, { onConflict: 'user_id' });
       
       toast({ description: "Cloud sync enabled. Your data will be backed up." });
     } catch (error) {
       console.error('Error saving consent:', error);
     }
-  }, [getDeviceId, toast]);
+  }, [getDeviceId, toast, user]);
 
   // Deny consent
   const denyConsent = useCallback(() => {

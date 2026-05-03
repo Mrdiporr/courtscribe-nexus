@@ -216,6 +216,7 @@ export type Database = {
           created_at: string
           device_id: string
           id: string
+          user_id: string
         }
         Insert: {
           consented?: boolean
@@ -223,6 +224,7 @@ export type Database = {
           created_at?: string
           device_id: string
           id?: string
+          user_id: string
         }
         Update: {
           consented?: boolean
@@ -230,6 +232,7 @@ export type Database = {
           created_at?: string
           device_id?: string
           id?: string
+          user_id?: string
         }
         Relationships: []
       }

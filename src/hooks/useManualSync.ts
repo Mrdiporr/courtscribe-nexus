@@ -88,7 +88,7 @@ export function useManualSync() {
       console.error('Error syncing transcript:', error);
       return false;
     }
-  }, []);
+  }, [user]);
 
   // Get cloud session ID for a local session
   const getCloudSessionId = useCallback(async (localSessionId: string): Promise<string | null> => {
@@ -146,6 +146,9 @@ export function useManualSync() {
     try {
       // Get all local sessions
       const { getAllSessions, getAudioChunks } = await import('@/lib/storage');
+      if (!user?.id) {
+        return { success: 0, failed: 0 };
+      }
       const sessions = await getAllSessions();
 
       for (let i = 0; i < sessions.length; i++) {
@@ -167,7 +170,7 @@ export function useManualSync() {
             { type: 'audio/webm' }
           );
 
-          const filePath = `sessions/${session.id}/recording.webm`;
+          const filePath = `${user.id}/sessions/${session.id}/recording.webm`;
 
           // Upload to storage bucket
           const { error: uploadError } = await supabase.storage
@@ -194,7 +197,7 @@ export function useManualSync() {
     }
 
     return { success, failed };
-  }, []);
+  }, [user]);
 
   // Main sync function
   const startSync = useCallback(async (type: SyncType) => {
