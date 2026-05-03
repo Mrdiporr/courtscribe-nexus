@@ -146,6 +146,9 @@ export function useManualSync() {
     try {
       // Get all local sessions
       const { getAllSessions, getAudioChunks } = await import('@/lib/storage');
+      if (!user?.id) {
+        return { success: 0, failed: 0 };
+      }
       const sessions = await getAllSessions();
 
       for (let i = 0; i < sessions.length; i++) {
