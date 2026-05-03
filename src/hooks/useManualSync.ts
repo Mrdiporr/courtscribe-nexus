@@ -170,7 +170,7 @@ export function useManualSync() {
             { type: 'audio/webm' }
           );
 
-          const filePath = `sessions/${session.id}/recording.webm`;
+          const filePath = `${user.id}/sessions/${session.id}/recording.webm`;
 
           // Upload to storage bucket
           const { error: uploadError } = await supabase.storage
