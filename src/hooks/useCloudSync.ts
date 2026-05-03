@@ -87,7 +87,7 @@ export function useCloudSync() {
     } catch (error) {
       console.error('Error saving consent:', error);
     }
-  }, [getDeviceId, toast]);
+  }, [getDeviceId, toast, user]);
 
   // Deny consent
   const denyConsent = useCallback(() => {
