@@ -88,7 +88,7 @@ export function useManualSync() {
       console.error('Error syncing transcript:', error);
       return false;
     }
-  }, []);
+  }, [user]);
 
   // Get cloud session ID for a local session
   const getCloudSessionId = useCallback(async (localSessionId: string): Promise<string | null> => {
