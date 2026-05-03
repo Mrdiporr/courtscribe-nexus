@@ -197,7 +197,7 @@ export function useManualSync() {
     }
 
     return { success, failed };
-  }, []);
+  }, [user]);
 
   // Main sync function
   const startSync = useCallback(async (type: SyncType) => {
