@@ -32,7 +32,11 @@ import { getAllSessions, deleteSession } from '@/lib/storage';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useCloudSyncSettings, type SyncMode } from '@/hooks/useCloudSyncSettings';
 import { useManualSync } from '@/hooks/useManualSync';
+import { useDeviceConsent } from '@/hooks/useDeviceConsent';
 import { getTranscriptsNeedingSync } from '@/lib/offlineStorage';
+import { Input } from '@/components/ui/input';
+import { Smartphone, Trash2 as Trash2Icon } from 'lucide-react';
+
 
 type RecordingQuality = 'low' | 'medium' | 'high';
 
@@ -43,6 +47,10 @@ export default function Settings() {
   const { aiEnabled, setAIEnabled } = useAISettings();
   const { syncMode, setSyncMode } = useCloudSyncSettings();
   const { isSyncing, progress, startSync } = useManualSync();
+  const { devices, currentDeviceId, currentDeviceLabel, upsertCurrentDevice, updateDeviceMode, revokeDevice, renameDevice } = useDeviceConsent();
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+
   
   const [sessionCount, setSessionCount] = useState(0);
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
@@ -86,14 +94,17 @@ export default function Settings() {
 
   const handleSyncModeChange = (mode: SyncMode) => {
     setSyncMode(mode);
-    toast({ 
-      description: mode === 'online' 
-        ? "Cloud sync enabled" 
-        : mode === 'offline' 
-        ? "Offline mode enabled" 
-        : "Will ask before syncing"
+    // Mirror this device's choice into the per-device consent registry.
+    upsertCurrentDevice(mode, mode !== 'offline').catch(err => console.error('device consent upsert', err));
+    toast({
+      description: mode === 'online'
+        ? "Cloud sync enabled for this device"
+        : mode === 'offline'
+        ? "Offline mode enabled for this device"
+        : "Will ask before syncing on this device"
     });
   };
+
 
   const handleClearAllData = async () => {
     const sessions = await getAllSessions();
