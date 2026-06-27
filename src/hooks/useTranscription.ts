@@ -40,27 +40,39 @@ export function useTranscription() {
     });
   }, []);
 
+  // Compute a stable idempotency key from the audio bytes so retries of the
+  // exact same recording are deduplicated server-side.
+  const sha256Hex = useCallback(async (blob: Blob): Promise<string> => {
+    const buf = await blob.arrayBuffer();
+    const digest = await crypto.subtle.digest('SHA-256', buf);
+    return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }, []);
+
   // Transcribe audio blob
   const transcribeAudio = useCallback(async (audioBlob: Blob): Promise<TranscriptionResult | null> => {
     setIsTranscribing(true);
     setProgress(10);
 
     try {
-      // Convert blob to base64
       setProgress(20);
-      const audioBase64 = await blobToBase64(audioBlob);
-      
+      const [audioBase64, idempotencyKey] = await Promise.all([
+        blobToBase64(audioBlob),
+        sha256Hex(audioBlob),
+      ]);
+
       setProgress(40);
       console.log('Sending audio for transcription...');
 
       const { data, error } = await supabase.functions.invoke('transcribe-audio', {
         body: { audio: audioBase64 },
+        headers: { 'x-idempotency-key': idempotencyKey },
       });
 
       if (error) {
         console.error('Transcription error:', error);
         throw new Error(error.message || 'Transcription failed');
       }
+
 
       setProgress(80);
 
@@ -101,7 +113,7 @@ export function useTranscription() {
     } finally {
       setIsTranscribing(false);
     }
-  }, [blobToBase64, toast]);
+  }, [blobToBase64, sha256Hex, toast]);
 
   // Update speaker label - this updates all segments with that speaker ID
   const updateSpeakerLabel = useCallback((speakerId: string, newLabel: string) => {

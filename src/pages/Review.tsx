@@ -25,6 +25,9 @@ import { AIReviewPanel } from '@/components/AIReviewPanel';
 import { TranscriptViewer } from '@/components/TranscriptViewer';
 import { CalendarButton } from '@/components/CalendarButton';
 import { saveOfflineTranscript, getOfflineTranscript, initOfflineDB } from '@/lib/offlineStorage';
+import { useSessionSyncStatus } from '@/hooks/useSyncStatus';
+import { SyncBadge } from '@/components/SyncBadge';
+
 import type { Session, AudioChunk, Marker, Note, Adjournment, ConfidenceLevel } from '@/types/session';
 import {
   AlertDialog,
@@ -50,6 +53,8 @@ export default function Review() {
   const { toast } = useToast();
   const { aiEnabled } = useAISettings();
   const audioRef = useRef<HTMLAudioElement>(null);
+  const { status: syncStatus } = useSessionSyncStatus(sessionId);
+
   
   const [session, setSession] = useState<Session | null>(null);
   const [audioChunks, setAudioChunks] = useState<AudioChunk[]>([]);
@@ -274,6 +279,14 @@ export default function Review() {
                 <span className="truncate">{session.courtName}</span>
               )}
             </div>
+            {syncStatus && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <SyncBadge state={syncStatus.recording.state} lastSyncedAt={syncStatus.recording.lastSyncedAt} />
+                {syncStatus.transcript.hasTranscript && (
+                  <SyncBadge state={syncStatus.transcript.state} lastSyncedAt={syncStatus.transcript.lastSyncedAt} />
+                )}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-1">
             <ExportMenu 

@@ -98,6 +98,8 @@ export type Database = {
           id: string
           local_id: string
           recording_posture: string
+          recording_size_bytes: number | null
+          recording_synced_at: string | null
           review_complete: boolean
           reviewed_at: string | null
           status: string
@@ -111,6 +113,8 @@ export type Database = {
           id?: string
           local_id: string
           recording_posture?: string
+          recording_size_bytes?: number | null
+          recording_synced_at?: string | null
           review_complete?: boolean
           reviewed_at?: string | null
           status?: string
@@ -124,6 +128,8 @@ export type Database = {
           id?: string
           local_id?: string
           recording_posture?: string
+          recording_size_bytes?: number | null
+          recording_synced_at?: string | null
           review_complete?: boolean
           reviewed_at?: string | null
           status?: string
@@ -176,6 +182,8 @@ export type Database = {
           start_ms: number
           text: string
           transcript_id: string
+          updated_at: string
+          updated_by_device: string | null
         }
         Insert: {
           created_at?: string
@@ -187,6 +195,8 @@ export type Database = {
           start_ms: number
           text: string
           transcript_id: string
+          updated_at?: string
+          updated_by_device?: string | null
         }
         Update: {
           created_at?: string
@@ -198,6 +208,8 @@ export type Database = {
           start_ms?: number
           text?: string
           transcript_id?: string
+          updated_at?: string
+          updated_by_device?: string | null
         }
         Relationships: [
           {
@@ -215,7 +227,10 @@ export type Database = {
           consented_at: string | null
           created_at: string
           device_id: string
+          device_label: string | null
           id: string
+          sync_mode: string
+          updated_at: string
           user_id: string
         }
         Insert: {
@@ -223,7 +238,10 @@ export type Database = {
           consented_at?: string | null
           created_at?: string
           device_id: string
+          device_label?: string | null
           id?: string
+          sync_mode?: string
+          updated_at?: string
           user_id: string
         }
         Update: {
@@ -231,7 +249,46 @@ export type Database = {
           consented_at?: string | null
           created_at?: string
           device_id?: string
+          device_label?: string | null
           id?: string
+          sync_mode?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      transcribe_requests: {
+        Row: {
+          audio_sha256: string | null
+          created_at: string
+          error: string | null
+          id: string
+          idempotency_key: string
+          response: Json | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          audio_sha256?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          idempotency_key: string
+          response?: Json | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          audio_sha256?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          idempotency_key?: string
+          response?: Json | null
+          status?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -244,7 +301,9 @@ export type Database = {
           language_code: string | null
           session_id: string
           updated_at: string
+          updated_by_device: string | null
           user_id: string | null
+          version: number
         }
         Insert: {
           created_at?: string
@@ -253,7 +312,9 @@ export type Database = {
           language_code?: string | null
           session_id: string
           updated_at?: string
+          updated_by_device?: string | null
           user_id?: string | null
+          version?: number
         }
         Update: {
           created_at?: string
@@ -262,7 +323,9 @@ export type Database = {
           language_code?: string | null
           session_id?: string
           updated_at?: string
+          updated_by_device?: string | null
           user_id?: string | null
+          version?: number
         }
         Relationships: [
           {

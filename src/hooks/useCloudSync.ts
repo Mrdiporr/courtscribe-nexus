@@ -81,7 +81,8 @@ export function useCloudSync() {
         consented: true,
         consented_at: new Date().toISOString(),
         user_id: user.id,
-      }, { onConflict: 'user_id' });
+      }, { onConflict: 'user_id,device_id' });
+
       
       toast({ description: "Cloud sync enabled. Your data will be backed up." });
     } catch (error) {
