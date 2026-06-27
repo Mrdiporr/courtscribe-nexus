@@ -359,6 +359,109 @@ export default function Settings() {
           </div>
         </section>
 
+        {/* Devices Section — per-device consent & sync mode */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Smartphone className="w-5 h-5 text-muted-foreground" />
+            <h2 className="font-serif text-lg font-medium">Devices</h2>
+          </div>
+
+          <div className="bg-card border border-border rounded-lg p-4 space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Each device has its own consent and sync mode. Revoke a device to immediately stop
+              it from syncing new data to the cloud.
+            </p>
+
+            {devices.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                No devices registered yet. Pick a sync mode above to register this device.
+              </p>
+            )}
+
+            <ul className="divide-y divide-border">
+              {devices.map((d) => {
+                const isCurrent = d.device_id === currentDeviceId;
+                const isRenaming = renamingId === d.device_id;
+                return (
+                  <li key={d.id} className="py-3 flex flex-col gap-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        {isRenaming ? (
+                          <div className="flex gap-2">
+                            <Input
+                              value={renameValue}
+                              onChange={(e) => setRenameValue(e.target.value)}
+                              className="h-8"
+                              maxLength={64}
+                            />
+                            <Button size="sm" onClick={async () => {
+                              await renameDevice(d.device_id, renameValue.trim() || 'Device');
+                              setRenamingId(null);
+                            }}>Save</Button>
+                            <Button size="sm" variant="ghost" onClick={() => setRenamingId(null)}>Cancel</Button>
+                          </div>
+                        ) : (
+                          <button
+                            className="text-left"
+                            onClick={() => { setRenamingId(d.device_id); setRenameValue(d.device_label ?? ''); }}
+                          >
+                            <p className="text-sm font-medium truncate">
+                              {d.device_label ?? 'Unnamed device'}
+                              {isCurrent && <span className="ml-2 text-[10px] uppercase tracking-wide text-primary">this device</span>}
+                            </p>
+                            <p className="text-xs text-muted-foreground font-mono truncate">{d.device_id}</p>
+                          </button>
+                        )}
+                      </div>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => revokeDevice(d.device_id)}
+                        title="Revoke device"
+                        aria-label="Revoke device"
+                      >
+                        <Trash2Icon className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs text-muted-foreground w-16 shrink-0">Mode</Label>
+                      <Select
+                        value={d.sync_mode}
+                        onValueChange={(v) => updateDeviceMode(d.device_id, v as SyncMode)}
+                      >
+                        <SelectTrigger className="h-8 text-xs flex-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="online">Online sync</SelectItem>
+                          <SelectItem value="offline">Offline only</SelectItem>
+                          <SelectItem value="ask">Ask each time</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {d.consented_at && (
+                      <p className="text-[10px] text-muted-foreground">
+                        Consented {new Date(d.consented_at).toLocaleString()}
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+
+            {!devices.some(d => d.device_id === currentDeviceId) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => upsertCurrentDevice(syncMode, syncMode !== 'offline')}
+              >
+                Register this device ({currentDeviceLabel})
+              </Button>
+            )}
+          </div>
+        </section>
+
+
         {/* Data Management Section */}
         <section className="space-y-4">
           <div className="flex items-center gap-2">
