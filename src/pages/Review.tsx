@@ -279,6 +279,14 @@ export default function Review() {
                 <span className="truncate">{session.courtName}</span>
               )}
             </div>
+            {syncStatus && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <SyncBadge state={syncStatus.recording.state} lastSyncedAt={syncStatus.recording.lastSyncedAt} />
+                {syncStatus.transcript.hasTranscript && (
+                  <SyncBadge state={syncStatus.transcript.state} lastSyncedAt={syncStatus.transcript.lastSyncedAt} />
+                )}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-1">
             <ExportMenu 
