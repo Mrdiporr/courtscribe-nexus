@@ -1,10 +1,11 @@
 // Offline Storage for Transcripts
-// IndexedDB storage for transcripts with case linking and cloud sync support
+// IndexedDB storage for transcripts with case linking, cloud sync metadata,
+// and per-session recording sync tracking.
 
 import type { Session } from '@/types/session';
 
 const DB_NAME = 'mybarrister_offline_db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export interface OfflineTranscript {
   id: string;
@@ -15,8 +16,11 @@ export interface OfflineTranscript {
   languageCode: string;
   createdAt: Date;
   updatedAt: Date;
-  syncedAt?: Date; // When last synced to cloud
-  needsSync: boolean; // Flag for pending sync
+  syncedAt?: Date;
+  needsSync: boolean;
+  version?: number;
+  updatedByDevice?: string;
+  lastSyncError?: string;
 }
 
 export interface SpeakerSegment {
@@ -27,6 +31,8 @@ export interface SpeakerSegment {
   startMs: number;
   endMs: number;
   segmentIndex: number;
+  updatedAt?: Date;
+  updatedByDevice?: string;
 }
 
 export interface SyncQueue {
@@ -38,63 +44,61 @@ export interface SyncQueue {
   errorMessage?: string;
 }
 
+export interface RecordingSyncRecord {
+  sessionId: string;
+  syncedAt: Date | null;
+  sizeBytes: number;
+  needsSync: boolean;
+  lastError?: string;
+}
+
 let db: IDBDatabase | null = null;
 
 export async function initOfflineDB(): Promise<IDBDatabase> {
   if (db) return db;
-
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-
     request.onerror = () => reject(request.error);
-    
-    request.onsuccess = () => {
-      db = request.result;
-      resolve(db);
-    };
-
+    request.onsuccess = () => { db = request.result; resolve(db); };
     request.onupgradeneeded = (event) => {
       const database = (event.target as IDBOpenDBRequest).result;
-
-      // Existing stores from v1 (handled by main storage.ts)
-      
-      // Transcripts store for offline storage
       if (!database.objectStoreNames.contains('transcripts_offline')) {
-        const transcriptStore = database.createObjectStore('transcripts_offline', { keyPath: 'id' });
-        transcriptStore.createIndex('sessionId', 'sessionId', { unique: false });
-        transcriptStore.createIndex('caseNumber', 'caseNumber', { unique: false });
-        transcriptStore.createIndex('needsSync', 'needsSync', { unique: false });
+        const s = database.createObjectStore('transcripts_offline', { keyPath: 'id' });
+        s.createIndex('sessionId', 'sessionId', { unique: false });
+        s.createIndex('caseNumber', 'caseNumber', { unique: false });
+        s.createIndex('needsSync', 'needsSync', { unique: false });
       }
-
-      // Sync queue for manual sync operations
       if (!database.objectStoreNames.contains('sync_queue')) {
-        const syncStore = database.createObjectStore('sync_queue', { keyPath: 'id' });
-        syncStore.createIndex('status', 'status', { unique: false });
-        syncStore.createIndex('type', 'type', { unique: false });
-        syncStore.createIndex('sessionId', 'sessionId', { unique: false });
+        const s = database.createObjectStore('sync_queue', { keyPath: 'id' });
+        s.createIndex('status', 'status', { unique: false });
+        s.createIndex('type', 'type', { unique: false });
+        s.createIndex('sessionId', 'sessionId', { unique: false });
+      }
+      if (!database.objectStoreNames.contains('recording_sync')) {
+        database.createObjectStore('recording_sync', { keyPath: 'sessionId' });
       }
     };
   });
 }
 
-// Generic store getter
 async function getStore(storeName: string, mode: IDBTransactionMode = 'readonly') {
   const database = await initOfflineDB();
-  const transaction = database.transaction(storeName, mode);
-  return transaction.objectStore(storeName);
+  return database.transaction(storeName, mode).objectStore(storeName);
 }
 
-// Transcript operations
+// ---------- Transcripts ----------
 export async function saveOfflineTranscript(transcript: OfflineTranscript): Promise<void> {
   const store = await getStore('transcripts_offline', 'readwrite');
   return new Promise((resolve, reject) => {
-    const request = store.put({
+    const next = {
       ...transcript,
       updatedAt: new Date(),
       needsSync: true,
-    });
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
+      version: (transcript.version ?? 0) + 1,
+    };
+    const req = store.put(next);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
   });
 }
 
@@ -102,100 +106,142 @@ export async function getOfflineTranscript(sessionId: string): Promise<OfflineTr
   const store = await getStore('transcripts_offline');
   const index = store.index('sessionId');
   return new Promise((resolve, reject) => {
-    const request = index.get(sessionId);
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    const req = index.get(sessionId);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
   });
 }
 
 export async function getAllOfflineTranscripts(): Promise<OfflineTranscript[]> {
   const store = await getStore('transcripts_offline');
   return new Promise((resolve, reject) => {
-    const request = store.getAll();
-    request.onsuccess = () => resolve(request.result || []);
-    request.onerror = () => reject(request.error);
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
   });
 }
 
 export async function getTranscriptsNeedingSync(): Promise<OfflineTranscript[]> {
-  const store = await getStore('transcripts_offline');
-  return new Promise((resolve, reject) => {
-    const request = store.getAll();
-    request.onsuccess = () => {
-      const all = (request.result || []) as OfflineTranscript[];
-      resolve(all.filter(t => t.needsSync === true));
-    };
-    request.onerror = () => reject(request.error);
-  });
+  const all = await getAllOfflineTranscripts();
+  return all.filter(t => t.needsSync === true);
 }
 
 export async function getTranscriptsByCaseNumber(caseNumber: string): Promise<OfflineTranscript[]> {
   const store = await getStore('transcripts_offline');
   const index = store.index('caseNumber');
   return new Promise((resolve, reject) => {
-    const request = index.getAll(caseNumber);
-    request.onsuccess = () => resolve(request.result || []);
-    request.onerror = () => reject(request.error);
+    const req = index.getAll(caseNumber);
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
   });
 }
 
-export async function markTranscriptSynced(id: string): Promise<void> {
+export async function markTranscriptSynced(id: string, opts: { error?: string } = {}): Promise<void> {
   const store = await getStore('transcripts_offline', 'readwrite');
   return new Promise((resolve, reject) => {
-    const getRequest = store.get(id);
-    getRequest.onsuccess = () => {
-      const transcript = getRequest.result;
-      if (transcript) {
-        transcript.syncedAt = new Date();
-        transcript.needsSync = false;
-        const putRequest = store.put(transcript);
-        putRequest.onsuccess = () => resolve();
-        putRequest.onerror = () => reject(putRequest.error);
+    const get = store.get(id);
+    get.onsuccess = () => {
+      const t = get.result;
+      if (!t) return resolve();
+      if (opts.error) {
+        t.lastSyncError = opts.error;
       } else {
-        resolve();
+        t.syncedAt = new Date();
+        t.needsSync = false;
+        t.lastSyncError = undefined;
       }
+      const put = store.put(t);
+      put.onsuccess = () => resolve();
+      put.onerror = () => reject(put.error);
     };
-    getRequest.onerror = () => reject(getRequest.error);
+    get.onerror = () => reject(get.error);
   });
+}
+
+// Apply a remote version locally if it is strictly newer (used by conflict resolution).
+export async function applyRemoteTranscript(remote: OfflineTranscript): Promise<'applied' | 'kept-local'> {
+  const local = await getOfflineTranscript(remote.sessionId);
+  if (!local) {
+    const store = await getStore('transcripts_offline', 'readwrite');
+    await new Promise<void>((res, rej) => {
+      const r = store.put({ ...remote, needsSync: false, syncedAt: new Date() });
+      r.onsuccess = () => res(); r.onerror = () => rej(r.error);
+    });
+    return 'applied';
+  }
+  const localTs = new Date(local.updatedAt).getTime();
+  const remoteTs = new Date(remote.updatedAt).getTime();
+  // Deterministic rule: latest updated_at wins; on tie, higher version wins; on tie, remote wins.
+  const remoteWins =
+    remoteTs > localTs ||
+    (remoteTs === localTs && (remote.version ?? 0) > (local.version ?? 0));
+  if (!remoteWins) return 'kept-local';
+  const store = await getStore('transcripts_offline', 'readwrite');
+  await new Promise<void>((res, rej) => {
+    const r = store.put({ ...local, ...remote, needsSync: false, syncedAt: new Date() });
+    r.onsuccess = () => res(); r.onerror = () => rej(r.error);
+  });
+  return 'applied';
 }
 
 export async function deleteOfflineTranscript(id: string): Promise<void> {
   const store = await getStore('transcripts_offline', 'readwrite');
   return new Promise((resolve, reject) => {
-    const request = store.delete(id);
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
+    const req = store.delete(id);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
   });
 }
 
-// Sync queue operations
+// ---------- Recording sync tracking ----------
+export async function getRecordingSync(sessionId: string): Promise<RecordingSyncRecord | undefined> {
+  const store = await getStore('recording_sync');
+  return new Promise((resolve, reject) => {
+    const req = store.get(sessionId);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function getAllRecordingSync(): Promise<RecordingSyncRecord[]> {
+  const store = await getStore('recording_sync');
+  return new Promise((resolve, reject) => {
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function setRecordingSync(rec: RecordingSyncRecord): Promise<void> {
+  const store = await getStore('recording_sync', 'readwrite');
+  return new Promise((resolve, reject) => {
+    const req = store.put(rec);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// ---------- Sync queue ----------
 export async function addToSyncQueue(item: Omit<SyncQueue, 'id' | 'createdAt' | 'status'>): Promise<string> {
   const store = await getStore('sync_queue', 'readwrite');
   const id = `sync_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-  
   return new Promise((resolve, reject) => {
-    const request = store.put({
-      ...item,
-      id,
-      createdAt: new Date(),
-      status: 'pending',
-    });
-    request.onsuccess = () => resolve(id);
-    request.onerror = () => reject(request.error);
+    const req = store.put({ ...item, id, createdAt: new Date(), status: 'pending' });
+    req.onsuccess = () => resolve(id);
+    req.onerror = () => reject(req.error);
   });
 }
 
 export async function getSyncQueue(): Promise<SyncQueue[]> {
   const store = await getStore('sync_queue');
   return new Promise((resolve, reject) => {
-    const request = store.getAll();
-    request.onsuccess = () => {
-      const items = (request.result || []) as SyncQueue[];
-      // Sort by creation date, oldest first
+    const req = store.getAll();
+    req.onsuccess = () => {
+      const items = (req.result || []) as SyncQueue[];
       items.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
       resolve(items);
     };
-    request.onerror = () => reject(request.error);
+    req.onerror = () => reject(req.error);
   });
 }
 
@@ -203,50 +249,46 @@ export async function getPendingSyncItems(): Promise<SyncQueue[]> {
   const store = await getStore('sync_queue');
   const index = store.index('status');
   return new Promise((resolve, reject) => {
-    const request = index.getAll('pending');
-    request.onsuccess = () => resolve(request.result || []);
-    request.onerror = () => reject(request.error);
+    const req = index.getAll('pending');
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
   });
 }
 
 export async function updateSyncQueueItem(id: string, updates: Partial<SyncQueue>): Promise<void> {
   const store = await getStore('sync_queue', 'readwrite');
   return new Promise((resolve, reject) => {
-    const getRequest = store.get(id);
-    getRequest.onsuccess = () => {
-      const item = getRequest.result;
-      if (item) {
-        const putRequest = store.put({ ...item, ...updates });
-        putRequest.onsuccess = () => resolve();
-        putRequest.onerror = () => reject(putRequest.error);
-      } else {
-        resolve();
-      }
+    const get = store.get(id);
+    get.onsuccess = () => {
+      const item = get.result;
+      if (!item) return resolve();
+      const put = store.put({ ...item, ...updates });
+      put.onsuccess = () => resolve();
+      put.onerror = () => reject(put.error);
     };
-    getRequest.onerror = () => reject(getRequest.error);
+    get.onerror = () => reject(get.error);
   });
 }
 
 export async function removeSyncQueueItem(id: string): Promise<void> {
   const store = await getStore('sync_queue', 'readwrite');
   return new Promise((resolve, reject) => {
-    const request = store.delete(id);
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
+    const req = store.delete(id);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
   });
 }
 
 export async function clearCompletedSyncItems(): Promise<void> {
   const store = await getStore('sync_queue', 'readwrite');
   const index = store.index('status');
-  
   return new Promise((resolve, reject) => {
-    const request = index.getAllKeys('completed');
-    request.onsuccess = () => {
-      const keys = request.result || [];
-      keys.forEach(key => store.delete(key));
+    const req = index.getAllKeys('completed');
+    req.onsuccess = () => {
+      const keys = req.result || [];
+      keys.forEach(k => store.delete(k));
       resolve();
     };
-    request.onerror = () => reject(request.error);
+    req.onerror = () => reject(req.error);
   });
 }
