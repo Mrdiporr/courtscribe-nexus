@@ -150,8 +150,8 @@ describe('offline → online sync conflict resolution', () => {
 
   it('full tie (same updated_at + same version) → remote wins deterministically', async () => {
     const sameTime = new Date('2026-07-05T10:00:00Z');
-    // Save locally then normalize version back to match remote, without bumping.
-    await saveOfflineTranscript(makeLocal({ updatedAt: sameTime, version: 1 }));
+    await saveAt(sameTime, makeLocal({ version: 0 })); // bumps to version 1
+
     // Direct edit through save would bump; instead mark it synced to freeze state, then compare.
     const local = await getOfflineTranscript('session-1');
     const remote = makeRemote({ updatedAt: sameTime, version: local!.version });
