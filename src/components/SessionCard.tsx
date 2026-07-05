@@ -5,9 +5,13 @@ import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Calendar, Clock, CheckCircle2, AlertCircle, FileText, Mic } from 'lucide-react';
 import { SyncBadge, type SyncState } from '@/components/SyncBadge';
+import { SyncErrorBanner } from '@/components/SyncErrorBanner';
+import { TranscriptionStatusBadge } from '@/components/TranscriptionStatusBadge';
+import { useTranscriptionStatus } from '@/hooks/useTranscriptionStatus';
 import { getOfflineTranscript, getRecordingSync } from '@/lib/offlineStorage';
 import { useCloudSyncSettings } from '@/hooks/useCloudSyncSettings';
 import type { Session } from '@/types/session';
+
 
 interface SessionCardProps {
   session: Session;
