@@ -73,14 +73,24 @@ export function SessionCard({ session, onClick }: SessionCardProps) {
   };
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       className={cn(
-        "w-full text-left p-4 bg-card rounded-lg border border-border",
+        "w-full text-left p-4 bg-card rounded-lg border border-border cursor-pointer",
         "border-l-4 transition-all hover:shadow-md hover:border-primary/30",
+        "focus:outline-none focus:ring-2 focus:ring-ring",
         statusColors[session.status]
       )}
     >
+
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-2 min-w-0 flex-1">
           <div className="flex items-center gap-2">
