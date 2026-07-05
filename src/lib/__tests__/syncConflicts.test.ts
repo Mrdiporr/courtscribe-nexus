@@ -59,15 +59,24 @@ function makeRemote(overrides: Partial<OfflineTranscript> = {}): OfflineTranscri
 }
 
 async function resetDb() {
-  // fake-indexeddb persists across tests within the same worker; delete the DB
-  // so every test starts from a clean slate.
-  await new Promise<void>((resolve, reject) => {
-    const req = indexedDB.deleteDatabase('mybarrister_offline_db');
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
-    req.onblocked = () => resolve();
-  });
+  // Clear stores rather than deleting the whole database — the offlineStorage
+  // module caches its IDBDatabase handle, so deleteDatabase() would block.
+  const { initOfflineDB } = await import('@/lib/offlineStorage');
+  const db = await initOfflineDB();
+  const stores = ['transcripts_offline', 'sync_queue', 'recording_sync'];
+  await Promise.all(
+    stores.map(
+      (name) =>
+        new Promise<void>((resolve, reject) => {
+          const tx = db.transaction(name, 'readwrite');
+          const req = tx.objectStore(name).clear();
+          req.onsuccess = () => resolve();
+          req.onerror = () => reject(req.error);
+        })
+    )
+  );
 }
+
 
 describe('offline → online sync conflict resolution', () => {
   beforeEach(resetDb);
