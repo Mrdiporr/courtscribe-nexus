@@ -2,6 +2,8 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { setTranscriptionStatus } from '@/lib/transcriptionStatus';
+
 
 export interface SpeakerSegment {
   id: string;
