@@ -178,7 +178,7 @@ export default function Review() {
   const handleTranscribeConfirm = async () => {
     setShowTranscribeConsent(false);
     if (audioBlob && sessionId) {
-      const result = await transcribeAudio(audioBlob);
+      const result = await transcribeAudio(audioBlob, { sessionId });
       if (result) {
         // Auto-save to IndexedDB
         await saveOfflineTranscript({
