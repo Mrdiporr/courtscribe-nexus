@@ -105,7 +105,7 @@ describe('offline → online sync conflict resolution', () => {
   });
 
   it('applies a strictly newer remote (remote wins on updated_at)', async () => {
-    await saveOfflineTranscript(makeLocal());
+    await saveAt(new Date('2026-07-05T10:00:00Z'), makeLocal());
     const remote = makeRemote({ updatedAt: new Date('2026-07-05T12:00:00Z'), version: 2 });
 
     const outcome = await applyRemoteTranscript(remote);
@@ -122,9 +122,7 @@ describe('offline → online sync conflict resolution', () => {
   });
 
   it('keeps local when remote is older (local wins on updated_at)', async () => {
-    await saveOfflineTranscript(
-      makeLocal({ updatedAt: new Date('2026-07-05T15:00:00Z'), version: 3 })
-    );
+    await saveAt(new Date('2026-07-05T15:00:00Z'), makeLocal({ version: 3 }));
     const remote = makeRemote({ updatedAt: new Date('2026-07-05T11:00:00Z'), version: 2 });
 
     const outcome = await applyRemoteTranscript(remote);
@@ -139,9 +137,7 @@ describe('offline → online sync conflict resolution', () => {
 
   it('tie on updated_at → higher version wins (remote higher)', async () => {
     const sameTime = new Date('2026-07-05T10:00:00Z');
-    await saveOfflineTranscript(
-      makeLocal({ updatedAt: sameTime, version: 1 })
-    );
+    await saveAt(sameTime, makeLocal({ version: 0 })); // save bumps to 1
     const remote = makeRemote({ updatedAt: sameTime, version: 5 });
 
     const outcome = await applyRemoteTranscript(remote);
@@ -150,6 +146,7 @@ describe('offline → online sync conflict resolution', () => {
     expect(merged!.version).toBe(5);
     expect(merged!.fullText).toBe('Remote text');
   });
+
 
   it('full tie (same updated_at + same version) → remote wins deterministically', async () => {
     const sameTime = new Date('2026-07-05T10:00:00Z');
