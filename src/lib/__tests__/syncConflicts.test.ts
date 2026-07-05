@@ -84,16 +84,23 @@ async function resetDb() {
 describe('offline → online sync conflict resolution', () => {
   beforeEach(async () => {
     await resetDb();
-    vi.useFakeTimers();
   });
-  afterEach(() => vi.useRealTimers());
 
+  // Write directly to the store so we can control updatedAt/version exactly,
+  // bypassing saveOfflineTranscript's implicit `updatedAt = new Date()` and
+  // `version += 1` behaviour (which we still exercise in dedicated tests).
   async function saveAt(date: Date, t: OfflineTranscript) {
-    // saveOfflineTranscript stamps updatedAt = new Date(); freeze the clock
-    // so we can assert deterministic ordering against a "remote" timestamp.
-    vi.setSystemTime(date);
-    await saveOfflineTranscript(t);
+    const db = await initOfflineDB();
+    await new Promise<void>((resolve, reject) => {
+      const req = db
+        .transaction('transcripts_offline', 'readwrite')
+        .objectStore('transcripts_offline')
+        .put({ ...t, updatedAt: date, needsSync: true });
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
   }
+
 
 
   it('records offline edits with needsSync=true and bumps version', async () => {
