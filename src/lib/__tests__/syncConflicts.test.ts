@@ -13,15 +13,17 @@
 //   - Speaker segments follow their transcript: pulling remote replaces local
 //     segments; pushing local replaces remote segments atomically.
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import 'fake-indexeddb/auto';
 import {
   saveOfflineTranscript,
   getOfflineTranscript,
   applyRemoteTranscript,
   markTranscriptSynced,
+  initOfflineDB,
   type OfflineTranscript,
 } from '@/lib/offlineStorage';
+
 
 
 function makeLocal(overrides: Partial<OfflineTranscript> = {}): OfflineTranscript {
