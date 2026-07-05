@@ -146,7 +146,7 @@ export function SessionCard({ session, onClick }: SessionCardProps) {
           ) : null}
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 
