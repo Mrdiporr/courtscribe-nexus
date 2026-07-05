@@ -34,8 +34,9 @@ function formatDate(date: Date): string {
 
 export function SessionCard({ session, onClick }: SessionCardProps) {
   const { isOfflineMode } = useCloudSyncSettings();
-  const [transcriptState, setTranscriptState] = useState<{ state: SyncState; at: Date | null; exists: boolean }>({ state: 'unknown', at: null, exists: false });
-  const [recordingState, setRecordingState] = useState<{ state: SyncState; at: Date | null }>({ state: 'unknown', at: null });
+  const [transcriptState, setTranscriptState] = useState<{ state: SyncState; at: Date | null; exists: boolean; error?: string }>({ state: 'unknown', at: null, exists: false });
+  const [recordingState, setRecordingState] = useState<{ state: SyncState; at: Date | null; error?: string }>({ state: 'unknown', at: null });
+  const transcriptionStatus = useTranscriptionStatus(session.id);
 
   useEffect(() => {
     let cancelled = false;
@@ -50,19 +51,20 @@ export function SessionCard({ session, onClick }: SessionCardProps) {
         : isOfflineMode && !t.syncedAt ? 'offline-only'
         : t.needsSync ? 'pending'
         : t.syncedAt ? 'synced' : 'unknown';
-      setTranscriptState({ state: tState, at: t?.syncedAt ? new Date(t.syncedAt) : null, exists: !!t });
+      setTranscriptState({ state: tState, at: t?.syncedAt ? new Date(t.syncedAt) : null, exists: !!t, error: t?.lastSyncError });
       const rState: SyncState = !r ? (isOfflineMode ? 'offline-only' : 'pending')
         : r.lastError ? 'error'
         : isOfflineMode && !r.syncedAt ? 'offline-only'
         : r.needsSync ? 'pending'
         : r.syncedAt ? 'synced' : 'unknown';
-      setRecordingState({ state: rState, at: r?.syncedAt ? new Date(r.syncedAt) : null });
+      setRecordingState({ state: rState, at: r?.syncedAt ? new Date(r.syncedAt) : null, error: r?.lastError });
     }
     load();
     const handler = () => load();
     window.addEventListener('myjuris:sync-updated', handler);
     return () => { cancelled = true; window.removeEventListener('myjuris:sync-updated', handler); };
   }, [session.id, isOfflineMode]);
+
 
   const statusColors = {
     active: 'border-l-recording',
