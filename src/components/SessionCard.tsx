@@ -119,7 +119,13 @@ export function SessionCard({ session, onClick }: SessionCardProps) {
                 <SyncBadge state={transcriptState.state} lastSyncedAt={transcriptState.at} compact />
               </>
             )}
+            <TranscriptionStatusBadge status={transcriptionStatus} compact className="ml-2" />
           </div>
+
+          <SyncErrorBanner
+            transcriptError={transcriptState.error}
+            recordingError={recordingState.error}
+          />
         </div>
 
         <div className="shrink-0">
@@ -133,4 +139,5 @@ export function SessionCard({ session, onClick }: SessionCardProps) {
     </button>
   );
 }
+
 
