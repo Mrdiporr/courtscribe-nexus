@@ -2,6 +2,8 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { setTranscriptionStatus } from '@/lib/transcriptionStatus';
+
 
 export interface SpeakerSegment {
   id: string;
@@ -48,10 +50,18 @@ export function useTranscription() {
     return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
   }, []);
 
-  // Transcribe audio blob
-  const transcribeAudio = useCallback(async (audioBlob: Blob): Promise<TranscriptionResult | null> => {
+  // Transcribe audio blob. Optional sessionId enables per-session status
+  // tracking so UI can surface queued / in-flight / deduped / failed states.
+  const transcribeAudio = useCallback(async (
+    audioBlob: Blob,
+    opts: { sessionId?: string } = {},
+  ): Promise<TranscriptionResult | null> => {
     setIsTranscribing(true);
     setProgress(10);
+    const { sessionId } = opts;
+    const bumpStatus = (patch: Parameters<typeof setTranscriptionStatus>[1]) => {
+      if (sessionId) setTranscriptionStatus(sessionId, patch);
+    };
 
     try {
       setProgress(20);
@@ -60,8 +70,16 @@ export function useTranscription() {
         sha256Hex(audioBlob),
       ]);
 
+      // Mark queued (post-hash, pre-network) so the UI can show progress.
+      bumpStatus({ state: 'queued', idempotencyKey, lastError: undefined });
+
       setProgress(40);
       console.log('Sending audio for transcription...');
+      bumpStatus({
+        state: 'in-flight',
+        idempotencyKey,
+        attempt: 1,
+      });
 
       const { data, error } = await supabase.functions.invoke('transcribe-audio', {
         body: { audio: audioBase64 },
@@ -98,15 +116,28 @@ export function useTranscription() {
 
       setTranscription(result);
       setProgress(100);
-      
-      toast({ description: "Transcription complete" });
+
+      // If the edge function returned an idempotent cache hit, surface as "deduped".
+      bumpStatus({
+        state: data.idempotent ? 'deduped' : 'completed',
+        idempotencyKey,
+        lastError: undefined,
+      });
+
+      toast({
+        description: data.idempotent
+          ? 'Transcription reused (deduped)'
+          : 'Transcription complete',
+      });
       return result;
 
     } catch (error) {
       console.error('Transcription error:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      bumpStatus({ state: 'failed', lastError: message });
       toast({
         title: "Transcription Failed",
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: message,
         variant: "destructive",
       });
       return null;
@@ -114,6 +145,7 @@ export function useTranscription() {
       setIsTranscribing(false);
     }
   }, [blobToBase64, sha256Hex, toast]);
+
 
   // Update speaker label - this updates all segments with that speaker ID
   const updateSpeakerLabel = useCallback((speakerId: string, newLabel: string) => {

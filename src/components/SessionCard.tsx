@@ -5,9 +5,13 @@ import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Calendar, Clock, CheckCircle2, AlertCircle, FileText, Mic } from 'lucide-react';
 import { SyncBadge, type SyncState } from '@/components/SyncBadge';
+import { SyncErrorBanner } from '@/components/SyncErrorBanner';
+import { TranscriptionStatusBadge } from '@/components/TranscriptionStatusBadge';
+import { useTranscriptionStatus } from '@/hooks/useTranscriptionStatus';
 import { getOfflineTranscript, getRecordingSync } from '@/lib/offlineStorage';
 import { useCloudSyncSettings } from '@/hooks/useCloudSyncSettings';
 import type { Session } from '@/types/session';
+
 
 interface SessionCardProps {
   session: Session;
@@ -30,8 +34,9 @@ function formatDate(date: Date): string {
 
 export function SessionCard({ session, onClick }: SessionCardProps) {
   const { isOfflineMode } = useCloudSyncSettings();
-  const [transcriptState, setTranscriptState] = useState<{ state: SyncState; at: Date | null; exists: boolean }>({ state: 'unknown', at: null, exists: false });
-  const [recordingState, setRecordingState] = useState<{ state: SyncState; at: Date | null }>({ state: 'unknown', at: null });
+  const [transcriptState, setTranscriptState] = useState<{ state: SyncState; at: Date | null; exists: boolean; error?: string }>({ state: 'unknown', at: null, exists: false });
+  const [recordingState, setRecordingState] = useState<{ state: SyncState; at: Date | null; error?: string }>({ state: 'unknown', at: null });
+  const transcriptionStatus = useTranscriptionStatus(session.id);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,19 +51,20 @@ export function SessionCard({ session, onClick }: SessionCardProps) {
         : isOfflineMode && !t.syncedAt ? 'offline-only'
         : t.needsSync ? 'pending'
         : t.syncedAt ? 'synced' : 'unknown';
-      setTranscriptState({ state: tState, at: t?.syncedAt ? new Date(t.syncedAt) : null, exists: !!t });
+      setTranscriptState({ state: tState, at: t?.syncedAt ? new Date(t.syncedAt) : null, exists: !!t, error: t?.lastSyncError });
       const rState: SyncState = !r ? (isOfflineMode ? 'offline-only' : 'pending')
         : r.lastError ? 'error'
         : isOfflineMode && !r.syncedAt ? 'offline-only'
         : r.needsSync ? 'pending'
         : r.syncedAt ? 'synced' : 'unknown';
-      setRecordingState({ state: rState, at: r?.syncedAt ? new Date(r.syncedAt) : null });
+      setRecordingState({ state: rState, at: r?.syncedAt ? new Date(r.syncedAt) : null, error: r?.lastError });
     }
     load();
     const handler = () => load();
     window.addEventListener('myjuris:sync-updated', handler);
     return () => { cancelled = true; window.removeEventListener('myjuris:sync-updated', handler); };
   }, [session.id, isOfflineMode]);
+
 
   const statusColors = {
     active: 'border-l-recording',
@@ -67,14 +73,24 @@ export function SessionCard({ session, onClick }: SessionCardProps) {
   };
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       className={cn(
-        "w-full text-left p-4 bg-card rounded-lg border border-border",
+        "w-full text-left p-4 bg-card rounded-lg border border-border cursor-pointer",
         "border-l-4 transition-all hover:shadow-md hover:border-primary/30",
+        "focus:outline-none focus:ring-2 focus:ring-ring",
         statusColors[session.status]
       )}
     >
+
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-2 min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -113,7 +129,13 @@ export function SessionCard({ session, onClick }: SessionCardProps) {
                 <SyncBadge state={transcriptState.state} lastSyncedAt={transcriptState.at} compact />
               </>
             )}
+            <TranscriptionStatusBadge status={transcriptionStatus} compact className="ml-2" />
           </div>
+
+          <SyncErrorBanner
+            transcriptError={transcriptState.error}
+            recordingError={recordingState.error}
+          />
         </div>
 
         <div className="shrink-0">
@@ -124,7 +146,8 @@ export function SessionCard({ session, onClick }: SessionCardProps) {
           ) : null}
         </div>
       </div>
-    </button>
+    </div>
   );
 }
+
 
