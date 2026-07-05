@@ -80,7 +80,19 @@ async function resetDb() {
 
 
 describe('offline → online sync conflict resolution', () => {
-  beforeEach(resetDb);
+  beforeEach(async () => {
+    await resetDb();
+    vi.useFakeTimers();
+  });
+  afterEach(() => vi.useRealTimers());
+
+  async function saveAt(date: Date, t: OfflineTranscript) {
+    // saveOfflineTranscript stamps updatedAt = new Date(); freeze the clock
+    // so we can assert deterministic ordering against a "remote" timestamp.
+    vi.setSystemTime(date);
+    await saveOfflineTranscript(t);
+  }
+
 
   it('records offline edits with needsSync=true and bumps version', async () => {
     await saveOfflineTranscript(makeLocal({ version: 0, needsSync: false }));
