@@ -16,7 +16,7 @@ export function ConnectivityBanner() {
   // Nothing to show: online, idle, nothing pending.
   if (online && activity === 'idle' && pendingCount === 0) return null;
 
-  let Icon = CloudCheck;
+  let Icon = Cloud;
   let label = '';
   let tone: 'muted' | 'warning' | 'info' | 'error' = 'muted';
 
@@ -36,7 +36,7 @@ export function ConnectivityBanner() {
     tone = 'error';
     label = lastMessage || 'Some items failed to sync';
   } else if (activity === 'completed') {
-    Icon = CloudCheck;
+    Icon = Cloud;
     tone = 'info';
     label = `Synced — up to date${lastSyncedAt ? ` at ${formatTime(lastSyncedAt)}` : ''}`;
   } else if (pendingCount > 0) {
