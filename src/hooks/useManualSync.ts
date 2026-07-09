@@ -226,6 +226,7 @@ export function useManualSync() {
   const startSync = useCallback(async (type: SyncType) => {
     if (isSyncing) return;
     setIsSyncing(true);
+    emitSyncStart(type);
     setProgress({ current: 0, total: 0, type, status: 'syncing', message: 'Starting sync…' });
     try {
       let tr = { success: 0, failed: 0 };
@@ -240,11 +241,10 @@ export function useManualSync() {
       }
       const ok = tr.success + rec.success;
       const ko = tr.failed + rec.failed;
-      setProgress({
-        current: ok + ko, total: ok + ko, type,
-        status: ko > 0 ? 'error' : 'completed',
-        message: ko > 0 ? `Completed with ${ko} error(s)` : 'Sync completed',
-      });
+      const status = ko > 0 ? 'error' : 'completed';
+      const message = ko > 0 ? `Completed with ${ko} error(s)` : 'Sync completed';
+      setProgress({ current: ok + ko, total: ok + ko, type, status, message });
+      emitSyncEnd(status, message);
       toast({
         description: `Synced ${ok} item(s)${ko > 0 ? `, ${ko} failed` : ''}`,
         variant: ko > 0 ? 'destructive' : 'default',
@@ -252,11 +252,13 @@ export function useManualSync() {
     } catch (err) {
       console.error('startSync', err);
       setProgress(p => ({ ...p, status: 'error', message: 'Sync failed' }));
+      emitSyncEnd('error', 'Sync failed');
       toast({ title: 'Sync Failed', description: 'An error occurred during sync.', variant: 'destructive' });
     } finally {
       setIsSyncing(false);
     }
   }, [isSyncing, syncTranscripts, syncRecordings, toast]);
+
 
   const queueSync = useCallback(async (sessionId: string, type: SyncType) => {
     const mapped = type === 'both' ? 'both' : type === 'transcripts' ? 'transcript' : 'recording';
