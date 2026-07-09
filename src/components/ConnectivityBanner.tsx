@@ -2,7 +2,7 @@
 // or briefly after coming back online with pending offline edits.
 
 import { useConnectivityStatus } from '@/hooks/useConnectivityStatus';
-import { CloudOff, CloudCheck, RefreshCw, CloudAlert } from 'lucide-react';
+import { CloudOff, Cloud, RefreshCw, CloudAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 function formatTime(d: Date | null) {
