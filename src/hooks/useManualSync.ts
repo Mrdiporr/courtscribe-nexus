@@ -33,6 +33,13 @@ interface SyncProgress {
 function emitSyncUpdated() {
   window.dispatchEvent(new CustomEvent('myjuris:sync-updated'));
 }
+function emitSyncStart(type: string) {
+  window.dispatchEvent(new CustomEvent('myjuris:sync-start', { detail: { type } }));
+}
+function emitSyncEnd(status: 'completed' | 'error', message?: string) {
+  window.dispatchEvent(new CustomEvent('myjuris:sync-end', { detail: { status, message } }));
+}
+
 
 export function useManualSync() {
   const { toast } = useToast();
