@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { useAutoSync } from "@/hooks/useAutoSync";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ConnectivityBanner } from "@/components/ConnectivityBanner";
 import Index from "./pages/Index";
 import NewSession from "./pages/NewSession";
 import Recording from "./pages/Recording";
