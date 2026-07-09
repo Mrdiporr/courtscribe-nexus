@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { useAutoSync } from "@/hooks/useAutoSync";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ConnectivityBanner } from "@/components/ConnectivityBanner";
 import Index from "./pages/Index";
 import NewSession from "./pages/NewSession";
 import Recording from "./pages/Recording";
@@ -30,6 +31,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AutoSyncProvider>
+            <ConnectivityBanner />
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
@@ -41,6 +43,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AutoSyncProvider>
+
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>
