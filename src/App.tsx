@@ -31,6 +31,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AutoSyncProvider>
+            <ConnectivityBanner />
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AutoSyncProvider>
+
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>
