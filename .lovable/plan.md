@@ -1,20 +1,17 @@
 # Recording and transcription failure recovery
 
 ## Outcome and scope
-Make failures visible, preserve saved audio and transcript edits, and provide an explicit recovery action for each failure. Add automated acceptance tests before changing failure behavior.
-
-This is the proposed fix and execution plan, not a claim that fixes are implemented. Existing baseline: **20 tests passed across three files**. Those tests cover status helpers and sync conflicts, not recording lifecycle or full transcription recovery. No live failure reproduction or hosted-function tests have been performed yet.
+Preserve saved content, expose failures and provide explicit recovery. This is a proposed fix plan; implementation awaits approval. **Baseline: 20 tests pass**, covering status and sync conflicts—not recording/transcription recovery. Live failure and hosted checks remain unverified. Latest automatic build: **OK**.
 
 ## Confirmed gaps
-- Recording starts when the recording page opens, contrary to the explicit-start requirement.
-- The recorder's periodic save reads stale recording state; asynchronous buffer clearing can discard new audio. Cleanup runs when recording state changes and can stop newly acquired tracks.
-- Stop does not await final audio persistence before closing the session and navigating away. Audio writes report request success rather than transaction completion, and use replacement writes despite the append-only requirement.
-- Transcription reports completion before local storage succeeds. Storage failures can leave a displayed transcript that disappears on reload.
-- Interrupted transcription statuses and server-side pending requests have no recovery deadline. Duplicate claims and database errors can bypass deduplication.
-- Transient failures have no clear retry/cooldown path; malformed provider responses can leave requests stuck.
+- Recording auto-starts; stale state, buffer clearing and cleanup risk lost audio.
+- Stop navigates before final persistence; writes acknowledge requests, not commits, and can overwrite chunks.
+- Transcription claims completion before local saving.
+- Interrupted requests lack deadlines; races/database errors bypass deduplication.
+- Transient/malformed responses lack reliable recovery.
 
 ## Acceptance criteria: recording
-Every criterion below becomes a named test with controlled failures and concrete assertions.
+Each criterion becomes a named test with controlled failures and concrete assertions.
 
 | ID | Given / when | Required outcome and recovery |
 |---|---|---|
@@ -44,7 +41,7 @@ Every criterion below becomes a named test with controlled failures and concrete
 | T9 Durable success | Valid result and local transaction commit succeed; navigate away, reload, reopen review. | Only then report completion/deduped success. Text and segments read back from IndexedDB identically, remain attached to the case/session, and retain accurate sync-pending metadata. |
 | T10 Review read failure | Reject session/audio/transcript loading or use a missing session. | Show failure/not-found rather than an endless loading state. Retry load restores committed content without starting recording or sending audio. |
 
-These timings are proposed implementation defaults. No new scheduling assumptions, automatic recording, background transcription submission, or changes to consent policy are included.
+Timings are proposed defaults. No scheduling assumptions, auto-recording, background transcription or consent-policy changes.
 
 ## Fix strategy — technical details
 1. Serialize recorder writes: detach batches, retain failures, use append-only inserts and monotonic indices, and await final data plus transaction commit. Stable teardown refs replace state-dependent cleanup. Handle track loss/visibility and preserve actual MIME types across replay, export, sync and transcription.
@@ -67,5 +64,4 @@ These timings are proposed implementation defaults. No new scheduling assumption
 - No destructive migrations/deletion. Use compatible additions; hold release on failure and restore prior app/function behavior without removing user data. No automatic publishing.
 
 ## Deliverables after approval
-- Implemented recovery fixes and automated acceptance tests mapped to R1–R8 / T1–T10.
-- A concise verification report separating automated, mocked, browser and hosted checks, including remaining limitations.
+Recovery fixes/tests mapped to R1–R8 and T1–T10; a verification report distinguishing mocked, browser and hosted checks.
