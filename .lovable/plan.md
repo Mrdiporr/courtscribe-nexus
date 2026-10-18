@@ -47,24 +47,24 @@ Every criterion below becomes a named test with controlled failures and concrete
 These timings are proposed implementation defaults. No new scheduling assumptions, automatic recording, background transcription submission, or changes to consent policy are included.
 
 ## Fix strategy — technical details
-1. **Recorder and local durability:** introduce a small serialized recording write queue; detach batches before awaiting persistence, retain failed batches, and await final data plus transaction completion. Audio uses append-only inserts and monotonic indices. Add explicit lifecycle states for starting, recording, saving, recovery and interruption; teardown uses stable refs rather than recording-state effect cleanup. Handle track loss and visibility changes. Use supported MIME formats consistently through replay, export, sync and transcription instead of relabeling bytes.
-2. **Recording page:** replace mount auto-start with explicit Start; disable duplicate actions during start/stop/save; navigate only after successful finalization. Add safe recovery actions and catch annotation/load failures. Recover stale active sessions from committed chunks, never by auto-resuming.
-3. **Transcription client/local storage:** validate input and response, serialize invocation, categorize safe failures, count attempts and expose manual Retry with cooldown. Separate received output from committed transcript success. Handle persistence errors and stale status across reload; consent gates remain authoritative.
-4. **Transcription service:** derive identity from actual audio plus relevant request options; atomically claim requests with a bounded lease and attempt token. Check every database result, remove soft-fail dedupe, bound provider execution, validate responses and handle exceptions. Lease/claim logic requires an additive application migration with owner-scoped access and explicit grants, reviewed under the project's database rules before implementation.
-5. **No broad rewrite:** preserve case organization, existing transcript/speaker conflict outcomes, private audio storage paths and offline-first consent. Document introduced structural decisions in AGENTS.md during implementation.
+1. Serialize recorder writes: detach batches, retain failures, use append-only inserts and monotonic indices, and await final data plus transaction commit. Stable teardown refs replace state-dependent cleanup. Handle track loss/visibility and preserve actual MIME types across replay, export, sync and transcription.
+2. Replace auto-start with explicit Start; guard duplicate actions and finalization navigation. Expose recovery controls and handle annotation/load errors. Recover interrupted sessions without auto-resuming.
+3. Validate transcription input/output, serialize invocation, classify safe errors, count attempts and implement manual retry/cooldown. Separate received output from durable success; recover stale status after reload.
+4. Derive service identity from audio/options; atomically claim with lease and attempt token. Check database results, remove soft-fail dedupe, bound provider execution and catch errors. Use an additive migration with owner-scoped access and grants, following project database rules.
+5. Preserve case organization, sync conflict outcomes, private storage and consent. Record structural decisions in AGENTS.md.
 
 ## Execution and regression safeguards
-1. Add failing acceptance tests first using existing Vitest, fake IndexedDB and controlled MediaRecorder/track/network doubles. Test real hook/page orchestration and transaction failures—not just rewritten helper logic. Add a stable test command if missing.
-2. Implement durability/recorder fixes first, then the recording recovery screen. Run R1–R8 and existing 20 tests after this stage.
-3. Implement transcription local persistence/status/retry fixes; run T1–T4 and T8–T10 plus existing tests.
-4. Test claim concurrency, lease expiry, stale completion and provider errors in a local service harness with a controllable clock. Apply the additive migration only after compatibility checks, then deploy the function; run T5–T7 against mocked upstream failures without charging for repeated AI calls.
-5. Verify the real app through the browser: sign in, explicitly start with a deterministic test audio stream, record offline across a chunk boundary, stop, replay, transcribe with consent, revisit review and read back the durable transcript. Exercise rejection/recovery controls too. Keep mocked failure coverage distinct from a real hosted transcription check; one explicitly authorized live request verifies actual service connectivity.
-6. Re-run the full test suite, inspect automatic build results and browser errors, and check recording, review, exports, case listing and sync consent. Validate layout at desktop and narrow widths. Do not manually restart the app or run redundant builds.
+1. Add failing tests using Vitest, fake IndexedDB and controlled recorder/track/network doubles. Exercise real hook/page orchestration and transaction aborts. Add a stable test command.
+2. Implement recorder/durability and recovery controls; run R1–R8 and existing tests.
+3. Implement transcription persistence/status/retry; run T1–T4 and T8–T10 plus existing tests.
+4. Test concurrency, lease expiry, stale completion and provider errors with a controlled clock. Check migration compatibility before deploying; test T5–T7 with mocked provider failures.
+5. Browser verification: sign in, explicitly record deterministic test audio offline across a chunk boundary, stop, replay, transcribe with consent and reopen review to read back content. Exercise recovery. Distinguish mocked checks from one explicitly authorized live hosted transcription.
+6. Run all tests, inspect automatic build/browser errors and check exports, case listing, sync consent and desktop/narrow layouts.
 
 ## Release gate and rollback
-- Proceed only when the acceptance tests and existing tests pass, the automatic build is clean, and the real central flow reads back saved audio/transcript through the UI.
-- No guarantee that nothing can break: report precisely what was verified and any blocked hosted/browser checks.
-- No destructive audio/transcript migration or deletion. Use backward-compatible request fields and additive metadata. If validation fails, hold release and restore prior application/function behavior without removing user data; retain compatible schema additions. Do not publish automatically.
+- Require passing new/existing tests, clean automatic build and real UI read-back of saved audio/transcript.
+- Report verified checks and blockers; zero breakage cannot be guaranteed.
+- No destructive migrations/deletion. Use compatible additions; hold release on failure and restore prior app/function behavior without removing user data. No automatic publishing.
 
 ## Deliverables after approval
 - Implemented recovery fixes and automated acceptance tests mapped to R1–R8 / T1–T10.
