@@ -2,6 +2,6 @@
 
 - [x] Define testable failure acceptance criteria and expected recovery behavior.
 - [x] Produce a scoped fix and execution plan with regression safeguards for approval.
-- [ ] Implement approved recovery fixes and automated acceptance tests (awaiting plan approval).
+- [ ] Complete recorder lifecycle/UI and transcription recovery fixes and remaining acceptance tests.
 - [x] Add append-only audio writes, transaction-commit acknowledgement and tested retryable write queue.
-- [ ] Verify approved flows and report remaining limitations (after implementation).
+- [ ] Verify recording/transcription flows in the browser and hosted service after remaining implementation.
