@@ -69,9 +69,10 @@ async function getStore(storeName: string, mode: IDBTransactionMode = 'readonly'
 export async function saveSession(session: Session): Promise<void> {
   const store = await getStore('sessions', 'readwrite');
   return new Promise((resolve, reject) => {
-    const request = store.put(session);
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
+    store.transaction.oncomplete = () => resolve();
+    store.transaction.onabort = () => reject(store.transaction.error ?? new Error('Session save aborted'));
+    store.transaction.onerror = () => reject(store.transaction.error);
+    store.put(session);
   });
 }
 
@@ -96,9 +97,10 @@ export async function getAllSessions(): Promise<Session[]> {
 export async function saveAudioChunk(chunk: AudioChunk): Promise<void> {
   const store = await getStore('audioChunks', 'readwrite');
   return new Promise((resolve, reject) => {
-    const request = store.put(chunk);
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
+    store.transaction.oncomplete = () => resolve();
+    store.transaction.onabort = () => reject(store.transaction.error ?? new Error('Audio save aborted'));
+    store.transaction.onerror = () => reject(store.transaction.error);
+    store.add(chunk);
   });
 }
 

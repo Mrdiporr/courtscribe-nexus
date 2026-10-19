@@ -1,0 +1,2 @@
+# Reliability architecture
+- Serialize audio writes through RecordingWriteQueue and acknowledge IndexedDB transaction completion; failed batches must remain retryable and committed audio must never be replaced.
