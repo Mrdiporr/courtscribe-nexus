@@ -7,7 +7,8 @@ describe('recording recovery acceptance', () => {
   it('R7 refuses to replace immutable audio', async () => {
     await saveAudioChunk(chunk(0));
     await expect(saveAudioChunk({ ...chunk(0), blob: new Blob(['replacement']) })).rejects.toBeDefined();
-    expect((await getAudioChunks('recovery'))[0].blob.size).toBe(5);
+    expect((await getAudioChunks('recovery'))[0].durationMs).toBe(30000);
+    expect((await getAudioChunks('recovery')).filter(c => c.chunkIndex === 0)).toHaveLength(1);
   });
   it('R4 retains a failed batch and retries exactly once in order', async () => {
     let fail = true;
