@@ -402,10 +402,25 @@ export default function Review() {
                 </div>
               )}
 
-              {transcription && (
+              {transcription && !unsavedResult && (
                 <div className="text-sm text-success flex items-center gap-1">
                   <CheckCircle className="w-4 h-4" />
                   Transcript available
+                </div>
+              )}
+
+              {unsavedResult && (
+                <div className="flex items-center gap-2 text-sm text-warning">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span className="flex-1">Transcript received but not saved on this device.</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRetryTranscriptSave}
+                    disabled={retryingSave}
+                  >
+                    {retryingSave ? 'Retrying…' : 'Retry save'}
+                  </Button>
                 </div>
               )}
             </div>
