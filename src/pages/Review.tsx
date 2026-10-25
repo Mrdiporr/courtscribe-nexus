@@ -18,7 +18,7 @@ import {
 } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 import { useAISettings } from '@/hooks/useAISettings';
-import { useTranscription, type SpeakerSegment } from '@/hooks/useTranscription';
+import { useTranscription, type SpeakerSegment, type TranscriptionResult } from '@/hooks/useTranscription';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { ExportMenu } from '@/components/ExportMenu';
 import { AIReviewPanel } from '@/components/AIReviewPanel';
@@ -178,33 +178,69 @@ export default function Review() {
     }
   };
 
+  /** Persist a received transcript locally. Returns false on save failure —
+   * the result is kept in memory so retry never re-invokes AI. */
+  const persistTranscript = async (result: TranscriptionResult): Promise<boolean> => {
+    if (!sessionId) return false;
+    try {
+      await saveOfflineTranscript({
+        id: `transcript_${sessionId}`,
+        sessionId,
+        caseNumber: session?.caseNumber,
+        fullText: result.text,
+        segments: result.speakerSegments.map(seg => ({
+          id: seg.id,
+          speakerId: seg.speakerId,
+          speakerLabel: seg.speakerLabel,
+          text: seg.text,
+          startMs: seg.startMs,
+          endMs: seg.endMs,
+          segmentIndex: seg.segmentIndex,
+        })),
+        languageCode: result.language || 'en',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        needsSync: true,
+      });
+      setUnsavedResult(null);
+      setTranscriptionStatus(sessionId, { state: 'completed', lastError: undefined });
+      return true;
+    } catch {
+      // Received but not durable — do not claim completion.
+      setUnsavedResult(result);
+      setTranscriptionStatus(sessionId, {
+        state: 'received',
+        lastError: 'Received but not saved locally. Retry save.',
+      });
+      return false;
+    }
+  };
+
   const handleTranscribeConfirm = async () => {
     setShowTranscribeConsent(false);
     if (audioBlob && sessionId) {
       const result = await transcribeAudio(audioBlob, { sessionId });
       if (result) {
-        // Auto-save to IndexedDB
-        await saveOfflineTranscript({
-          id: `transcript_${sessionId}`,
-          sessionId,
-          caseNumber: session?.caseNumber,
-          fullText: result.text,
-          segments: result.speakerSegments.map(seg => ({
-            id: seg.id,
-            speakerId: seg.speakerId,
-            speakerLabel: seg.speakerLabel,
-            text: seg.text,
-            startMs: seg.startMs,
-            endMs: seg.endMs,
-            segmentIndex: seg.segmentIndex,
-          })),
-          languageCode: result.language || 'en',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          needsSync: true,
-        });
+        await persistTranscript(result);
       }
     }
+  };
+
+  // T8: retry the local save only — no AI re-invocation.
+  const handleRetryTranscriptSave = async () => {
+    if (!unsavedResult) return;
+    setRetryingSave(true);
+    const ok = await persistTranscript(unsavedResult);
+    setRetryingSave(false);
+    toast(
+      ok
+        ? { description: "Transcript saved" }
+        : {
+            title: "Still not saved",
+            description: "The received transcript could not be written yet. Try again.",
+            variant: "destructive",
+          },
+    );
   };
 
   const confirmAdjournment = async (adj: Adjournment, confidence: ConfidenceLevel) => {
