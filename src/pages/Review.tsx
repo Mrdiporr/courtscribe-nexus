@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, Pause, CheckCircle, Flag, StickyNote, Gavel, Trash2, FileText, Loader2 } from 'lucide-react';
+import { ArrowLeft, Play, Pause, CheckCircle, Flag, StickyNote, Gavel, Trash2, FileText, Loader2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TimeDisplay } from '@/components/TimeDisplay';
 import { 
