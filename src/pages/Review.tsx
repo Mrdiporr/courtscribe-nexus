@@ -25,6 +25,7 @@ import { AIReviewPanel } from '@/components/AIReviewPanel';
 import { TranscriptViewer } from '@/components/TranscriptViewer';
 import { CalendarButton } from '@/components/CalendarButton';
 import { saveOfflineTranscript, getOfflineTranscript, initOfflineDB } from '@/lib/offlineStorage';
+import { setTranscriptionStatus } from '@/lib/transcriptionStatus';
 import { useSessionSyncStatus } from '@/hooks/useSyncStatus';
 import { SyncBadge } from '@/components/SyncBadge';
 
