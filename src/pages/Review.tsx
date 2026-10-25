@@ -69,6 +69,8 @@ export default function Review() {
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showTranscribeConsent, setShowTranscribeConsent] = useState(false);
+  const [unsavedResult, setUnsavedResult] = useState<TranscriptionResult | null>(null);
+  const [retryingSave, setRetryingSave] = useState(false);
 
   // Transcription state
   const {
