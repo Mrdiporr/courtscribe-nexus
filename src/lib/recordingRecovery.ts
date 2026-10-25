@@ -13,7 +13,7 @@ export function nextChunkIndex(chunks: Pick<AudioChunk, 'chunkIndex'>[]): number
 }
 
 /** Base offset (ms) new capture should continue from after committed audio. */
-export function resumeOffsetMs(chunks: Pick<AudioChunk, 'startOffsetMs' | 'durationMs'>[]): number {
+export function resumeOffsetMs(chunks: Pick<AudioChunk, 'chunkIndex' | 'startOffsetMs' | 'durationMs'>[]): number {
   if (chunks.length === 0) return 0;
   const last = chunks.reduce((a, b) => (b.chunkIndex > a.chunkIndex ? b : a));
   return last.startOffsetMs + last.durationMs;
