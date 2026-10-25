@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, Pause, CheckCircle, Flag, StickyNote, Gavel, Trash2, FileText, Loader2 } from 'lucide-react';
+import { ArrowLeft, Play, Pause, CheckCircle, Flag, StickyNote, Gavel, Trash2, FileText, Loader2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TimeDisplay } from '@/components/TimeDisplay';
 import { 
@@ -18,13 +18,14 @@ import {
 } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 import { useAISettings } from '@/hooks/useAISettings';
-import { useTranscription, type SpeakerSegment } from '@/hooks/useTranscription';
+import { useTranscription, type SpeakerSegment, type TranscriptionResult } from '@/hooks/useTranscription';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { ExportMenu } from '@/components/ExportMenu';
 import { AIReviewPanel } from '@/components/AIReviewPanel';
 import { TranscriptViewer } from '@/components/TranscriptViewer';
 import { CalendarButton } from '@/components/CalendarButton';
 import { saveOfflineTranscript, getOfflineTranscript, initOfflineDB } from '@/lib/offlineStorage';
+import { setTranscriptionStatus } from '@/lib/transcriptionStatus';
 import { useSessionSyncStatus } from '@/hooks/useSyncStatus';
 import { SyncBadge } from '@/components/SyncBadge';
 
@@ -68,6 +69,8 @@ export default function Review() {
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showTranscribeConsent, setShowTranscribeConsent] = useState(false);
+  const [unsavedResult, setUnsavedResult] = useState<TranscriptionResult | null>(null);
+  const [retryingSave, setRetryingSave] = useState(false);
 
   // Transcription state
   const {
@@ -175,33 +178,69 @@ export default function Review() {
     }
   };
 
+  /** Persist a received transcript locally. Returns false on save failure —
+   * the result is kept in memory so retry never re-invokes AI. */
+  const persistTranscript = async (result: TranscriptionResult): Promise<boolean> => {
+    if (!sessionId) return false;
+    try {
+      await saveOfflineTranscript({
+        id: `transcript_${sessionId}`,
+        sessionId,
+        caseNumber: session?.caseNumber,
+        fullText: result.text,
+        segments: result.speakerSegments.map(seg => ({
+          id: seg.id,
+          speakerId: seg.speakerId,
+          speakerLabel: seg.speakerLabel,
+          text: seg.text,
+          startMs: seg.startMs,
+          endMs: seg.endMs,
+          segmentIndex: seg.segmentIndex,
+        })),
+        languageCode: result.language || 'en',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        needsSync: true,
+      });
+      setUnsavedResult(null);
+      setTranscriptionStatus(sessionId, { state: 'completed', lastError: undefined });
+      return true;
+    } catch {
+      // Received but not durable — do not claim completion.
+      setUnsavedResult(result);
+      setTranscriptionStatus(sessionId, {
+        state: 'received',
+        lastError: 'Received but not saved locally. Retry save.',
+      });
+      return false;
+    }
+  };
+
   const handleTranscribeConfirm = async () => {
     setShowTranscribeConsent(false);
     if (audioBlob && sessionId) {
       const result = await transcribeAudio(audioBlob, { sessionId });
       if (result) {
-        // Auto-save to IndexedDB
-        await saveOfflineTranscript({
-          id: `transcript_${sessionId}`,
-          sessionId,
-          caseNumber: session?.caseNumber,
-          fullText: result.text,
-          segments: result.speakerSegments.map(seg => ({
-            id: seg.id,
-            speakerId: seg.speakerId,
-            speakerLabel: seg.speakerLabel,
-            text: seg.text,
-            startMs: seg.startMs,
-            endMs: seg.endMs,
-            segmentIndex: seg.segmentIndex,
-          })),
-          languageCode: result.language || 'en',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          needsSync: true,
-        });
+        await persistTranscript(result);
       }
     }
+  };
+
+  // T8: retry the local save only — no AI re-invocation.
+  const handleRetryTranscriptSave = async () => {
+    if (!unsavedResult) return;
+    setRetryingSave(true);
+    const ok = await persistTranscript(unsavedResult);
+    setRetryingSave(false);
+    toast(
+      ok
+        ? { description: "Transcript saved" }
+        : {
+            title: "Still not saved",
+            description: "The received transcript could not be written yet. Try again.",
+            variant: "destructive",
+          },
+    );
   };
 
   const confirmAdjournment = async (adj: Adjournment, confidence: ConfidenceLevel) => {
@@ -363,10 +402,25 @@ export default function Review() {
                 </div>
               )}
 
-              {transcription && (
+              {transcription && !unsavedResult && (
                 <div className="text-sm text-success flex items-center gap-1">
                   <CheckCircle className="w-4 h-4" />
                   Transcript available
+                </div>
+              )}
+
+              {unsavedResult && (
+                <div className="flex items-center gap-2 text-sm text-warning">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span className="flex-1">Transcript received but not saved on this device.</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRetryTranscriptSave}
+                    disabled={retryingSave}
+                  >
+                    {retryingSave ? 'Retrying…' : 'Retry save'}
+                  </Button>
                 </div>
               )}
             </div>

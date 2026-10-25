@@ -1,5 +1,5 @@
 // Compact indicator for the transcribe-audio edge function state per session.
-import { Loader2, CheckCircle2, Clock, CopyCheck, AlertTriangle, FileAudio } from 'lucide-react';
+import { Loader2, CheckCircle2, Clock, CopyCheck, AlertTriangle, FileAudio, RefreshCw, Inbox } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import type { TranscriptionState, TranscriptionStatus } from '@/lib/transcriptionStatus';
@@ -16,6 +16,8 @@ const COPY: Record<TranscriptionState, { label: string; Icon: typeof Clock; tone
   'in-flight': { label: 'Transcribing…',   Icon: Loader2,     tone: 'bg-primary/10 text-primary border-primary/30', spin: true },
   completed:   { label: 'Transcribed',     Icon: CheckCircle2, tone: 'bg-success/10 text-success border-success/30' },
   deduped:     { label: 'Deduped',         Icon: CopyCheck,   tone: 'bg-success/10 text-success border-success/30' },
+  received:    { label: 'Received, not saved', Icon: Inbox,   tone: 'bg-warning/10 text-warning border-warning/30' },
+  interrupted: { label: 'Interrupted',     Icon: RefreshCw,   tone: 'bg-warning/10 text-warning border-warning/30' },
   failed:      { label: 'Failed',          Icon: AlertTriangle, tone: 'bg-destructive/10 text-destructive border-destructive/30' },
 };
 
@@ -25,7 +27,7 @@ export function TranscriptionStatusBadge({ status, compact, className }: Props) 
   const ts = status.updatedAt ? new Date(status.updatedAt) : null;
   const rel = ts && !isNaN(ts.getTime()) ? formatDistanceToNow(ts, { addSuffix: true }) : null;
   const title =
-    status.state === 'failed' && status.lastError
+    (status.state === 'failed' || status.state === 'interrupted' || status.state === 'received') && status.lastError
       ? `${meta.label}: ${status.lastError}${rel ? ` (${rel})` : ''}`
       : rel
       ? `${meta.label} · ${rel}`
