@@ -255,7 +255,7 @@ export function useManualSync() {
     }
     emitSyncUpdated();
     return { success, failed };
-  }, [user, getCloudSessionId]);
+  }, [user, getCloudSessionId, verifyDeviceConsent, toast]);
 
   const startSync = useCallback(async (type: SyncType) => {
     if (isSyncing) return;
@@ -263,6 +263,16 @@ export function useManualSync() {
     emitSyncStart(type);
     setProgress({ current: 0, total: 0, type, status: 'syncing', message: 'Starting sync…' });
     try {
+      // Gate every sync on the device's current consent row. If the device was
+      // revoked (or consent withdrawn / set to offline), stop before reading or
+      // pushing anything, including auto-sync runs.
+      const consent = await verifyDeviceConsent();
+      if (!consent.allowed) {
+        setProgress(p => ({ ...p, status: 'error', message: consent.reason }));
+        emitSyncEnd('error', consent.reason);
+        toast({ title: 'Sync Blocked', description: consent.reason, variant: 'destructive' });
+        return;
+      }
       let tr = { success: 0, failed: 0 };
       let rec = { success: 0, failed: 0 };
       if (type === 'transcripts' || type === 'both') {
