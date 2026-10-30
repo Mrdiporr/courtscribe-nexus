@@ -61,6 +61,31 @@ export function useManualSync() {
     return data?.id || null;
   }, []);
 
+  // Server-side device consent verification: queries the sync_consent row for the
+  // current user + device. A revoked device (row deleted, consent withdrawn, or
+  // mode set to offline) must never upload or push data, even if the app tab
+  // stayed open and its local settings still say "online".
+  const verifyDeviceConsent = useCallback(async (): Promise<{ allowed: boolean; reason: string }> => {
+    if (!user?.id) return { allowed: false, reason: 'Sign in to sync.' };
+    const { data, error } = await supabase
+      .from('sync_consent')
+      .select('consented, sync_mode')
+      .eq('user_id', user.id)
+      .eq('device_id', deviceId)
+      .maybeSingle();
+    if (error) {
+      console.error('verifyDeviceConsent', error);
+      return { allowed: false, reason: 'Cloud sync is unavailable right now. Try again later.' };
+    }
+    if (!data) {
+      return { allowed: false, reason: 'This device no longer has cloud sync access. Re-enable it in Settings if you want to sync from here.' };
+    }
+    if (!data.consented || data.sync_mode === 'offline') {
+      return { allowed: false, reason: 'Cloud sync is turned off for this device.' };
+    }
+    return { allowed: true, reason: '' };
+  }, [user, deviceId]);
+
   // ---- Conflict resolution for one transcript ----
   const syncTranscript = useCallback(async (
     local: OfflineTranscript,
