@@ -209,6 +209,15 @@ export function useManualSync() {
   const syncRecordings = useCallback(async () => {
     let success = 0, failed = 0;
     if (!user?.id) return { success, failed };
+    // Defense in depth: re-verify this device's consent immediately before any
+    // upload, so a device revoked mid-session cannot keep writing audio.
+    const consent = await verifyDeviceConsent();
+    if (!consent.allowed) {
+      console.warn('syncRecordings blocked:', consent.reason);
+      emitSyncEnd('error', consent.reason);
+      toast({ title: 'Sync Blocked', description: consent.reason, variant: 'destructive' });
+      return { success, failed };
+    }
     const { getAllSessions, getAudioChunks } = await import('@/lib/storage');
     const sessions = await getAllSessions();
     for (let i = 0; i < sessions.length; i++) {
