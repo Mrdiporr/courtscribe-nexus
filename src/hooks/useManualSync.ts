@@ -61,6 +61,31 @@ export function useManualSync() {
     return data?.id || null;
   }, []);
 
+  // Server-side device consent verification: queries the sync_consent row for the
+  // current user + device. A revoked device (row deleted, consent withdrawn, or
+  // mode set to offline) must never upload or push data, even if the app tab
+  // stayed open and its local settings still say "online".
+  const verifyDeviceConsent = useCallback(async (): Promise<{ allowed: boolean; reason: string }> => {
+    if (!user?.id) return { allowed: false, reason: 'Sign in to sync.' };
+    const { data, error } = await supabase
+      .from('sync_consent')
+      .select('consented, sync_mode')
+      .eq('user_id', user.id)
+      .eq('device_id', deviceId)
+      .maybeSingle();
+    if (error) {
+      console.error('verifyDeviceConsent', error);
+      return { allowed: false, reason: 'Cloud sync is unavailable right now. Try again later.' };
+    }
+    if (!data) {
+      return { allowed: false, reason: 'This device no longer has cloud sync access. Re-enable it in Settings if you want to sync from here.' };
+    }
+    if (!data.consented || data.sync_mode === 'offline') {
+      return { allowed: false, reason: 'Cloud sync is turned off for this device.' };
+    }
+    return { allowed: true, reason: '' };
+  }, [user, deviceId]);
+
   // ---- Conflict resolution for one transcript ----
   const syncTranscript = useCallback(async (
     local: OfflineTranscript,
@@ -184,6 +209,15 @@ export function useManualSync() {
   const syncRecordings = useCallback(async () => {
     let success = 0, failed = 0;
     if (!user?.id) return { success, failed };
+    // Defense in depth: re-verify this device's consent immediately before any
+    // upload, so a device revoked mid-session cannot keep writing audio.
+    const consent = await verifyDeviceConsent();
+    if (!consent.allowed) {
+      console.warn('syncRecordings blocked:', consent.reason);
+      emitSyncEnd('error', consent.reason);
+      toast({ title: 'Sync Blocked', description: consent.reason, variant: 'destructive' });
+      return { success, failed };
+    }
     const { getAllSessions, getAudioChunks } = await import('@/lib/storage');
     const sessions = await getAllSessions();
     for (let i = 0; i < sessions.length; i++) {
@@ -221,7 +255,7 @@ export function useManualSync() {
     }
     emitSyncUpdated();
     return { success, failed };
-  }, [user, getCloudSessionId]);
+  }, [user, getCloudSessionId, verifyDeviceConsent, toast]);
 
   const startSync = useCallback(async (type: SyncType) => {
     if (isSyncing) return;
@@ -229,6 +263,16 @@ export function useManualSync() {
     emitSyncStart(type);
     setProgress({ current: 0, total: 0, type, status: 'syncing', message: 'Starting sync…' });
     try {
+      // Gate every sync on the device's current consent row. If the device was
+      // revoked (or consent withdrawn / set to offline), stop before reading or
+      // pushing anything, including auto-sync runs.
+      const consent = await verifyDeviceConsent();
+      if (!consent.allowed) {
+        setProgress(p => ({ ...p, status: 'error', message: consent.reason }));
+        emitSyncEnd('error', consent.reason);
+        toast({ title: 'Sync Blocked', description: consent.reason, variant: 'destructive' });
+        return;
+      }
       let tr = { success: 0, failed: 0 };
       let rec = { success: 0, failed: 0 };
       if (type === 'transcripts' || type === 'both') {
@@ -257,7 +301,7 @@ export function useManualSync() {
     } finally {
       setIsSyncing(false);
     }
-  }, [isSyncing, syncTranscripts, syncRecordings, toast]);
+  }, [isSyncing, verifyDeviceConsent, syncTranscripts, syncRecordings, toast]);
 
 
   const queueSync = useCallback(async (sessionId: string, type: SyncType) => {
