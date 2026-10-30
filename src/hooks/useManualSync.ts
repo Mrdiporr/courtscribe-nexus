@@ -301,7 +301,7 @@ export function useManualSync() {
     } finally {
       setIsSyncing(false);
     }
-  }, [isSyncing, syncTranscripts, syncRecordings, toast]);
+  }, [isSyncing, verifyDeviceConsent, syncTranscripts, syncRecordings, toast]);
 
 
   const queueSync = useCallback(async (sessionId: string, type: SyncType) => {
