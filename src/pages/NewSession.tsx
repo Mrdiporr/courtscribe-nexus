@@ -2,7 +2,7 @@
 // Case number as unique ID, search existing cases
 
 import { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Mic, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,7 @@ interface CloudCase {
 
 export default function NewSession() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { isOnline, getOrCreateCase } = useCloudSync();
   
@@ -31,9 +32,9 @@ export default function NewSession() {
   const [selectedCase, setSelectedCase] = useState<CloudCase | null>(null);
   
   // Form state - case number is important for uniqueness
-  const [courtName, setCourtName] = useState('');
-  const [caseTitle, setCaseTitle] = useState('');
-  const [caseNumber, setCaseNumber] = useState('');
+  const [courtName, setCourtName] = useState(searchParams.get('court') ?? '');
+  const [caseTitle, setCaseTitle] = useState(searchParams.get('title') ?? '');
+  const [caseNumber, setCaseNumber] = useState(searchParams.get('case') ?? '');
   const [posture, setPosture] = useState<RecordingPosture>('personal_notes');
 
   // Handle case number blur - search for existing case

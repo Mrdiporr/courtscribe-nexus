@@ -36,6 +36,9 @@ function safeErrorMessage(error: unknown): string {
   if (/network|fetch|Failed to fetch|NetworkError/i.test(raw)) {
     return 'Could not reach the transcription service. Check your connection and retry.';
   }
+  if (/402|credits/i.test(raw)) {
+    return 'AI credits are used up for this workspace. Add credits, then retry.';
+  }
   if (/401|JWT|session/i.test(raw)) {
     return 'Sign in again, then retry transcription.';
   }
@@ -134,7 +137,12 @@ export function useTranscription() {
       });
 
       if (error) {
-        throw new Error(error.message || 'Transcription failed');
+        let detail = '';
+        try {
+          const ctx = (error as { context?: Response }).context;
+          if (ctx) detail = `${ctx.status} ${(await ctx.json())?.error ?? ''}`;
+        } catch { /* ignore */ }
+        throw new Error(detail || error.message || 'Transcription failed');
       }
 
       setProgress(80);

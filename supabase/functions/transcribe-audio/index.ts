@@ -194,10 +194,10 @@ serve(async (req) => {
     }
   }
 
-  // ---------- Call OpenAI ----------
-  const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-  if (!OPENAI_API_KEY) {
-    console.error('OPENAI_API_KEY not configured');
+  // ---------- Call Lovable AI Gateway (speech-to-text) ----------
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  if (!LOVABLE_API_KEY) {
+    console.error('LOVABLE_API_KEY not configured');
     await supabase.from('transcribe_requests')
       .update({ status: 'failed', error: 'service unavailable' })
       .eq('user_id', userId).eq('idempotency_key', idempotencyKey);
@@ -206,46 +206,46 @@ serve(async (req) => {
 
   const formData = new FormData();
   formData.append('file', new Blob([binary], { type: 'audio/webm' }), 'audio.webm');
-  formData.append('model', 'whisper-1');
-  formData.append('response_format', 'verbose_json');
-  formData.append('timestamp_granularities[]', 'word');
-  formData.append('timestamp_granularities[]', 'segment');
-  if (language && language !== 'auto') formData.append('language', language);
+  formData.append('model', 'openai/gpt-transcribe');
+  formData.append('response_format', 'json');
+  if (language && language !== 'auto') formData.append('languages', language);
 
-  let openaiResp: Response;
+  let aiResp: Response;
   try {
-    openaiResp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    aiResp = await fetch('https://ai.gateway.lovable.dev/v1/audio/transcriptions', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` },
+      headers: { 'Authorization': `Bearer ${LOVABLE_API_KEY}`, 'X-Lovable-AIG-SDK': 'fetch' },
       body: formData,
     });
   } catch (e) {
-    console.error('OpenAI network error', e);
+    console.error('Gateway network error', e);
     await supabase.from('transcribe_requests')
       .update({ status: 'failed', error: 'upstream network error' })
       .eq('user_id', userId).eq('idempotency_key', idempotencyKey);
     return jsonResponse({ error: 'Transcription service temporarily unavailable.' }, 502);
   }
 
-  if (!openaiResp.ok) {
-    const errText = await openaiResp.text().catch(() => '');
-    console.error('OpenAI API error', { status: openaiResp.status, error: errText, user: userId });
+  if (!aiResp.ok) {
+    const errText = await aiResp.text().catch(() => '');
+    console.error('Gateway transcription error', { status: aiResp.status, error: errText.slice(0, 500) });
     await supabase.from('transcribe_requests')
-      .update({ status: 'failed', error: `upstream ${openaiResp.status}` })
+      .update({ status: 'failed', error: `upstream ${aiResp.status}` })
       .eq('user_id', userId).eq('idempotency_key', idempotencyKey);
-    return jsonResponse({ error: 'Transcription service temporarily unavailable. Please try again later.' }, 502);
+    const status = aiResp.status === 429 ? 429 : aiResp.status === 402 ? 402 : 502;
+    const msg = status === 402
+      ? 'AI credits are used up for this workspace. Add credits, then retry.'
+      : status === 429 ? 'Too many requests' : 'Transcription service temporarily unavailable. Please try again later.';
+    return jsonResponse({ error: msg }, status);
   }
 
-  const result = await openaiResp.json();
-  const speakerSegments = processSegmentsWithSpeakers(result.segments || []);
-  const response = {
-    text: result.text,
-    segments: result.segments,
-    words: result.words,
-    speakerSegments,
-    language: result.language,
-    duration: result.duration,
-  };
+  const result = await aiResp.json();
+  const text: string = typeof result.text === 'string' ? result.text.trim() : '';
+  const durationSec: number = typeof result?.usage?.seconds === 'number' ? result.usage.seconds : 0;
+  const speakerSegments = text ? [{
+    id: 'seg_0', speakerId: 'speaker_1', speakerLabel: 'Speaker 1', segmentIndex: 0,
+    text, startMs: 0, endMs: Math.round(durationSec * 1000),
+  }] : [];
+  const response = { text, speakerSegments, duration: durationSec || undefined };
 
   await supabase.from('transcribe_requests').update({
     status: 'completed',

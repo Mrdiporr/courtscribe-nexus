@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, Filter, FolderOpen, Calendar, Clock, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Search, Filter, FolderOpen, Calendar, Clock, ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -290,7 +290,7 @@ export default function Cases() {
                     <CollapsibleContent>
                       <div className="border-t border-border p-3 space-y-2 bg-muted/30">
                         {group.sessions
-                          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                          .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
                           .map((session) => (
                             <SessionCard
                               key={session.id}
@@ -298,6 +298,20 @@ export default function Cases() {
                               onClick={() => navigate(`/review/${session.id}`)}
                             />
                           ))}
+                        {group.caseNumber !== 'Uncategorized' && (
+                          <Button
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => {
+                              const q = new URLSearchParams({ case: group.caseNumber });
+                              if (group.caseTitle) q.set('title', group.caseTitle);
+                              if (group.courtName) q.set('court', group.courtName);
+                              navigate(`/new-session?${q.toString()}`);
+                            }}
+                          >
+                            <Plus className="w-4 h-4 mr-2" /> New session for this case
+                          </Button>
+                        )}
                       </div>
                     </CollapsibleContent>
                   </div>
